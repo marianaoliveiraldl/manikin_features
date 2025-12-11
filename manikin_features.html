@@ -3,17 +3,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Manikin Feature Finder</title>
+  <title>Manikin Feature Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root {
-      --yes: #c8e6c9;
-      --no: #ffcdd2;
-      --border: #ddd;
-      --bg: #f6f6f6;
-      --warn: #fff8e1;
-      --warn-border: #ffecb3;
-    }
+    :root { --yes:#c8e6c9; --no:#ffcdd2; --border:#ddd; --bg:#f6f6f6; --warn:#fff8e1; --warn-border:#ffecb3; }
     body { font-family: Arial, sans-serif; margin: 24px; }
     h2 { margin-top: 0; }
     .controls { display: grid; grid-template-columns: 1fr auto auto auto; gap: 12px; align-items: center; }
@@ -26,60 +19,52 @@
     th { background: var(--bg); position: sticky; top: 0; z-index: 1; }
     .yes { background-color: var(--yes); }
     .no  { background-color: var(--no); }
-    .footer { margin-top: 16px; font-size: 12px; color: #666; }
-    .muted { color: #666; font-size: 12px; }
     .hidden { display: none; }
-    .warn {
-      background: var(--warn);
-      border: 1px solid var(--warn-border);
-      padding: 10px 12px;
-      margin-bottom: 12px;
-    }
-    @media (max-width: 900px) {
-      table { font-size: 13px; }
-      .controls { grid-template-columns: 1fr; }
-    }
+    .footer { margin-top: 16px; font-size: 12px; color: #666; }
+    .warn { background: var(--warn); border: 1px solid var(--warn-border); padding: 10px 12px; margin-bottom: 12px; }
   </style>
 </head>
 <body>
-  <h2>Manikin Feature Finder</h2>
+  <h2>Manikin Feature Map</h2>
 
   <div id="banner" class="warn hidden">
-    ⚠️ Couldn’t populate dropdowns — CSV parsing returned no features. Check Console (F12) for errors.
+    ⚠️ Couldn’t build the data model. Open DevTools (F12) → Console for details.
   </div>
 
   <div class="controls">
-    <!-- Search -->
     <input id="searchInput" type="text" placeholder="Search (Feature/Manikin)..." />
-
-    <!-- View buttons -->
     <div class="views">
-      <button id="btnComplete" title="Show full matrix">Complete view</button>
-      <button id="btnFeature"  title="View one feature × all manikins">Feature view</button>
-      <button id="btnManikin"  title="View one manikin × all features">Manikin view</button>
+      <button id="btnComplete">Complete view</button>
+      <button id="btnFeature">Feature view</button>
+      <button id="btnManikin">Manikin view</button>
     </div>
-
-    <!-- Hide X toggle -->
     <label class="toggle">
       <input type="checkbox" id="hideX" />
       <span>Hide unsupported (X)</span>
     </label>
-
-    <!-- Per-view selectors -->
     <div class="subcontrols">
-      <label for="featureSelect" class="muted">Feature:</label>
+      <label for="featureSelect">Feature:</label>
       <select id="featureSelect"></select>
-
-      <label for="manikinSelect" class="muted">Manikin:</label>
+      <label for="manikinSelect">Manikin:</label>
       <select id="manikinSelect"></select>
     </div>
   </div>
 
   <table id="resultsTable"></table>
 
-  <!-- Embedded CSV from your file -->
+  <!-- Early global error catcher -->
   <script>
-    // Keep this exact text block — it's safer for GitHub Pages copy/paste.
+    window.addEventListener('error', function (e) {
+      console.log('Global error:', e.message, e.filename, e.lineno, e.colno);
+      const banner = document.getElementById('banner');
+      banner.classList.remove('hidden');
+      banner.textContent = '⚠️ Script error: ' + e.message;
+    });
+    console.log('🔎 mapping.html loaded');
+  </script>
+
+  <!-- Embedded CSV -->
+  <script>
     const csv = `"Feature","SimMan 3G Plus","SimMan 3G","SimMan 3G Trauma","SimMan 3G Mystic","SimMan Essential","SimMan Essential Bleeding","SimMan ALS","Mama Anne","SimMom","Nursing Anne Simulator","SimBaby","SimJunior","SimNewb"
 "Fluids","✓ FluidsControl.xaml","X","X","X","X","X","X","X","X","X","X","X","X"
 "Circulation","X","X","X","X","✓ Circulation_Fluids.xaml","X","✓ Circulation_Fluids.xaml","X","✓ BleedingView.xaml","✓ Circulation_Fluids.xaml","X","X","X"
@@ -104,3 +89,134 @@
 "Session Log","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml"
 "Simulator","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml"
 "Local PC Status","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml"
+"Connections Status","✓ ConnectionStatus.xaml","✓ ConnectionStatus.xaml","✓ ConnectionStatus.xaml","✓ ConnectionStatus.xaml","✓ ConnectionStatus.xaml","✓ ConnectionStatus.xaml","✓ ConnectionStatus.xaml","✓ ConnectionStatus.xaml","✓ ConnectionStatus.xaml","✓ ConnectionStatus.xaml","✓ ConnectionStatus.xaml","✓ ConnectionStatus.xaml","✓ ConnectionStatus.xaml"
+"Prediction","✓ ParameterPredictionWindow.cpp","✓ ParameterPredictionWindow.cpp","✓ ParameterPredictionWindow.cpp","✓ ParameterPredictionWindow.cpp","✓ ParameterPredictionWindow.cpp","✓ ParameterPredictionWindow.cpp","✓ ParameterPredictionWindow.cpp","✓ ParameterPredictionWindow.cpp","✓ ParameterPredictionWindow.cpp","✓ ParameterPredictionWindow.cpp","✓ ParameterPredictionWindow.cpp","✓ ParameterPredictionWindow.cpp","✓ ParameterPredictionWindow.cpp"
+"Trends","✓ TTrendHandlerControllerGUI.cs","✓ TTrendHandlerControllerGUI.cs","✓ TTrendHandlerControllerGUI.cs","✓ TTrendHandlerControllerGUI.cs","✓ TTrendHandlerControllerGUI.cs","✓ TTrendHandlerControllerGUI.cs","✓ TTrendHandlerControllerGUI.cs","✓ TTrendHandlerControllerGUI.cs","✓ TTrendHandlerControllerGUI.cs","✓ TTrendHandlerControllerGUI.cs","✓ TTrendHandlerControllerGUI.cs","✓ TTrendHandlerControllerGUI.cs","✓ TTrendHandlerControllerGUI.cs"
+"Cardiac","✓ heartRhythmController.cs","✓ heartRhythmController.cs","✓ heartRhythmController.cs","✓ heartRhythmController.cs","✓ heartRhythmController.cs","✓ heartRhythmController.cs","✓ heartRhythmController.cs","✓ heartRhythmController.cs","✓ heartRhythmController.cs","✓ heartRhythmController.cs","✓ heartRhythmController.cs","✓ heartRhythmController.cs","✓ heartRhythmController.cs"
+"Comments","✓ CommentControl.cs","✓ CommentControl.cs","✓ CommentControl.cs","✓ CommentControl.cs","✓ CommentControl.cs","✓ CommentControl.cs","✓ CommentControl.cs","✓ CommentControl.cs","✓ CommentControl.cs","✓ CommentControl.cs","✓ CommentControl.cs","✓ CommentControl.cs","✓ CommentControl.cs"
+"Learner Patient Monitor Buttons","✓ MonitorButtonsController.cs","✓ MonitorButtonsController.cs","✓ MonitorButtonsController.cs","✓ MonitorButtonsController.cs","✓ MonitorButtonsController.cs","✓ MonitorButtonsController.cs","✓ MonitorButtonsController.cs","✓ MonitorButtonsController.cs","✓ MonitorButtonsController.cs","✓ MonitorButtonsController.cs","✓ MonitorButtonsController.cs","✓ MonitorButtonsController.cs","✓ MonitorButtonsController.cs"`;
+    console.log('📄 CSV string length:', csv.length);
+  </script>
+
+  <!-- Main logic -->
+  <script>
+    function parseCSV(text) {
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      const rows = lines.map(line => {
+        const cells = []; let i = 0, inQuotes = false, cell = '';
+        while (i < line.length) {
+          const ch = line[i];
+          if (ch === '"') { if (inQuotes && line[i+1] === '"') { cell += '"'; i += 2; } else { inQuotes = !inQuotes; i++; } }
+          else if (ch === ',' && !inQuotes) { cells.push(cell); cell = ''; i++; }
+          else { cell += ch; i++; }
+        }
+        cells.push(cell);
+        return cells.map(c => c.trim());
+      });
+      return rows;
+    }
+
+    function buildModel(rows) {
+      const header = rows[0], manikins = header.slice(1);
+      const dataByFeature = {}, dataByManikin = {};
+      manikins.forEach(m => dataByManikin[m] = {});
+      for (let r = 1; r < rows.length; r++) {
+        const feature = rows[r][0]; if (!feature) continue;
+        dataByFeature[feature] = {};
+        for (let c = 1; c < header.length; c++) {
+          const m = header[c], raw = rows[r][c] || '';
+          const supported = raw.startsWith('✓') ? '✓' : 'X';
+          dataByFeature[feature][m] = supported;
+          dataByManikin[m][feature] = supported;
+        }
+      }
+      return { features: Object.keys(dataByFeature), manikins, dataByFeature, dataByManikin };
+    }
+
+    function renderComplete(el, model, term = '', hideX = false) {
+      const t = term.toLowerCase();
+      const fRows = model.features.filter(f => !t || f.toLowerCase().includes(t));
+      const mCols = model.manikins.filter(m => !t || m.toLowerCase().includes(t));
+      let html = '<tr><th>Feature \\ Manikin</th>';
+      mCols.forEach(m => html += `<th>${m}</th>`); html += '</tr>';
+      fRows.forEach(f => {
+        html += `<tr><th>${f}</th>`;
+        mCols.forEach(m => {
+          const v = model.dataByFeature[f][m]; if (hideX && v !== '✓') html += `<td class="hidden"></td>`;
+          else html += `<td class="${v==='✓'?'yes':'no'}">${v}</td>`;
+        });
+        html += `</tr>`;
+      });
+      el.innerHTML = html;
+    }
+    function renderFeature(el, f, model, term = '', hideX = false) {
+      const t = term.toLowerCase(); el.innerHTML = `<tr><th>Manikin</th><th>${f}</th></tr>`;
+      const row = model.dataByFeature[f]; Object.keys(row).forEach(m => {
+        const v = row[m]; if (hideX && v !== '✓') return; if (t && !m.toLowerCase().includes(t)) return;
+        el.innerHTML += `<tr><td>${m}</td><td class="${v==='✓'?'yes':'no'}">${v}</td></tr>`;
+      });
+    }
+    function renderManikin(el, m, model, term = '', hideX = false) {
+      const t = term.toLowerCase(); el.innerHTML = `<tr><th>Feature</th><th>${m}</th></tr>`;
+      const row = model.dataByManikin[m]; Object.keys(row).forEach(f => {
+        const v = row[f]; if (hideX && v !== '✓') return; if (t && !f.toLowerCase().includes(t)) return;
+        el.innerHTML += `<tr><td>${f}</td><td class="${v==='✓'?'yes':'no'}">${v}</td></tr>`;
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('🚀 DOMContentLoaded');
+      const rows = parseCSV(csv);
+      console.log('📊 Parsed rows:', rows.length);
+      const model = buildModel(rows);
+      if (!model || !model.features.length || !model.manikins.length) {
+        document.getElementById('banner').classList.remove('hidden');
+        console.log('❌ Model build failed', { rows, model });
+        return;
+      }
+      console.log('✅ Features:', model.features.length, 'Manikins:', model.manikins.length);
+
+      const featureSelect = document.getElementById('featureSelect');
+      const manikinSelect = document.getElementById('manikinSelect');
+      const table = document.getElementById('resultsTable');
+      const searchInput = document.getElementById('searchInput');
+      const hideX = document.getElementById('hideX');
+      const btnComplete = document.getElementById('btnComplete');
+      const btnFeature = document.getElementById('btnFeature');
+      const btnManikin = document.getElementById('btnManikin');
+
+      // Populate selects
+      model.features.forEach(f => featureSelect.appendChild(new Option(f, f)));
+      model.manikins.forEach(m => manikinSelect.appendChild(new Option(m, m)));
+      featureSelect.value = model.features[0];
+      manikinSelect.value = model.manikins[0];
+
+      // View state
+      let view = 'complete';
+      function render() {
+        const term = searchInput.value.trim();
+        const hx = hideX.checked;
+        if (view === 'complete') renderComplete(table, model, term, hx);
+        else if (view === 'feature') renderFeature(table, featureSelect.value, model, term, hx);
+        else renderManikin(table, manikinSelect.value, model, term, hx);
+      }
+
+      // Initial render
+      render();
+
+      // Events
+      featureSelect.addEventListener('change', render);
+      manikinSelect.addEventListener('change', render);
+      hideX.addEventListener('change', render);
+      searchInput.addEventListener('input', () => render());
+      btnComplete.addEventListener('click', () => { view = 'complete'; render(); });
+      btnFeature.addEventListener('click',  () => { view = 'feature';  render(); });
+      btnManikin.addEventListener('click',  () => { view = 'manikin';  render(); });
+    });
+  </script>
+
+  <div class="footer">
+    Tip: Use <strong>Complete view</strong> to see the full matrix. Search filters rows/columns; enable “Hide unsupported (X)” to focus only on ✓.
+  </div>
+</body>
+</html>
