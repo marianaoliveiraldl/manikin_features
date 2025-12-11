@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Manikin Feature Finder</title>
+  <title>Manikin Feature Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { --yes:#c8e6c9; --no:#ffcdd2; --border:#ddd; --bg:#f6f6f6; --active:#0b5ed7; --activeText:#fff; }
@@ -31,7 +31,7 @@
   </style>
 </head>
 <body>
-  <h2>Manikin Feature Finder</h2>
+  <h2>Manikin Feature Map</h2>
 
   <div class="controls">
     <div class="views">
@@ -39,10 +39,6 @@
       <button id="btnFeature">Feature view</button>
       <button id="btnManikin">Manikin view</button>
     </div>
-    <label class="toggle" id="hideXWrap">
-      <input type="checkbox" id="hideX" />
-      <span>Hide unsupported (X)</span>
-    </label>
     <div class="subcontrols" id="featureSelectWrap">
       <label for="featureSelect">Feature:</label>
       <select id="featureSelect"></select>
@@ -51,6 +47,10 @@
       <label for="manikinSelect">Manikin:</label>
       <select id="manikinSelect"></select>
     </div>
+    <label class="toggle" id="hideXWrap">
+      <input type="checkbox" id="hideX" />
+      <span>Hide unsupported (X)</span>
+    </label>
   </div>
 
   <table id="resultsTable"></table>
