@@ -9,8 +9,8 @@
     :root { --yes:#c8e6c9; --no:#ffcdd2; --border:#ddd; --bg:#f6f6f6; --active:#0b5ed7; --activeText:#fff; }
     body { font-family: Arial, sans-serif; margin: 24px; }
     h2 { margin-top: 0; }
-    .controls { display: grid; grid-template-columns: 1fr auto auto auto; gap: 12px; align-items: center; }
-    .controls input[type="text"], .controls select, .controls button { padding: 8px; font-size: 14px; }
+    .controls { display: grid; grid-template-columns: auto auto auto; gap: 12px; align-items: center; }
+    .controls select, .controls button { padding: 8px; font-size: 14px; }
     .views { display: flex; gap: 8px; }
     .views button { border: 1px solid #ccc; background: #fff; cursor: pointer; border-radius: 4px; }
     .views button.active { background: var(--active); color: var(--activeText); border-color: var(--active); }
@@ -34,7 +34,6 @@
   <h2>Manikin Feature Finder</h2>
 
   <div class="controls">
-    <input id="searchInput" type="text" placeholder="Search (Feature/Manikin)..." />
     <div class="views">
       <button id="btnComplete" class="active">Complete view</button>
       <button id="btnFeature">Feature view</button>
@@ -121,15 +120,12 @@
       return { features: Object.keys(dataByFeature), manikins, dataByFeature, dataByManikin };
     }
 
-    function renderComplete(el, model, term = '') {
-      const t = term.toLowerCase();
-      const fRows = model.features.filter(f => !t || f.toLowerCase().includes(t));
-      const mCols = model.manikins.filter(m => !t || m.toLowerCase().includes(t));
+    function renderComplete(el, model) {
       let html = '<tr><th>Feature \\ Manikin</th>';
-      mCols.forEach(m => html += `<th>${m}</th>`); html += '</tr>';
-      fRows.forEach(f => {
+      model.manikins.forEach(m => html += `<th>${m}</th>`); html += '</tr>';
+      model.features.forEach(f => {
         html += `<tr><th>${f}</th>`;
-        mCols.forEach(m => {
+        model.manikins.forEach(m => {
           const v = model.dataByFeature[f][m];
           html += `<td class="${v==='✓'?'yes':'no'}">${v}</td>`;
         });
@@ -138,23 +134,21 @@
       el.innerHTML = html;
     }
 
-    function renderFeature(el, f, model, term = '', hideX = false) {
-      const t = term.toLowerCase(); el.innerHTML = `<tr><th>Manikin</th><th>${f}</th></tr>`;
+    function renderFeature(el, f, model, hideX = false) {
+      el.innerHTML = `<tr><th>Manikin</th><th>${f}</th></tr>`;
       const row = model.dataByFeature[f];
       Object.keys(row).forEach(m => {
         const v = row[m];
         if (hideX && v !== '✓') return;
-        if (t && !m.toLowerCase().includes(t)) return;
         el.innerHTML += `<tr><td>${m}</td><td class="${v==='✓'?'yes':'no'}">${v}</td></tr>`;
       });
     }
 
-    function renderManikin(el, m, model, term = '') {
-      const t = term.toLowerCase(); el.innerHTML = `<tr><th>Feature</th><th>${m}</th></tr>`;
+    function renderManikin(el, m, model) {
+      el.innerHTML = `<tr><th>Feature</th><th>${m}</th></tr>`;
       const row = model.dataByManikin[m];
       Object.keys(row).forEach(f => {
         const v = row[f];
-        if (t && !f.toLowerCase().includes(t)) return;
         el.innerHTML += `<tr><td>${f}</td><td class="${v==='✓'?'yes':'no'}">${v}</td></tr>`;
       });
     }
@@ -171,7 +165,6 @@
       const hideXWrap = document.getElementById('hideXWrap');
       const hideX = document.getElementById('hideX');
       const table = document.getElementById('resultsTable');
-      const searchInput = document.getElementById('searchInput');
       const btnComplete = document.getElementById('btnComplete');
       const btnFeature = document.getElementById('btnFeature');
       const btnManikin = document.getElementById('btnManikin');
@@ -184,19 +177,18 @@
         [btnComplete, btnFeature, btnManikin].forEach(b => b.classList.toggle('active', b === btn));
       }
       function render() {
-        const term = searchInput.value.trim();
         featureWrap.style.display = (view === 'feature') ? 'flex' : 'none';
         manikinWrap.style.display = (view === 'manikin') ? 'flex' : 'none';
         hideXWrap.style.display = (view === 'feature') ? 'flex' : 'none';
 
         if (view === 'complete') {
-          renderComplete(table, model, term);
+          renderComplete(table, model);
           setActive(btnComplete);
         } else if (view === 'feature') {
-          renderFeature(table, featureSelect.value, model, term, hideX.checked);
+          renderFeature(table, featureSelect.value, model, hideX.checked);
           setActive(btnFeature);
         } else {
-          renderManikin(table, manikinSelect.value, model, term);
+          renderManikin(table, manikinSelect.value, model);
           setActive(btnManikin);
         }
       }
@@ -205,7 +197,6 @@
       featureSelect.addEventListener('change', render);
       manikinSelect.addEventListener('change', render);
       hideX.addEventListener('change', render);
-      searchInput.addEventListener('input', render);
       btnComplete.addEventListener('click', () => { view = 'complete'; render(); });
       btnFeature.addEventListener('click', () => { view = 'feature'; render(); });
       btnManikin.addEventListener('click', () => { view = 'manikin'; render(); });
@@ -213,6 +204,7 @@
   </script>
 
   <div class="footer">
+    
   </div>
 </body>
 </html>
