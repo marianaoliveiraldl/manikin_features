@@ -3,15 +3,17 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Manikin Feature Map</title>
+  <title>Manikin Feature Finder</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { --yes:#c8e6c9; --no:#ffcdd2; --border:#ddd; --bg:#f6f6f6; --warn:#fff8e1; --warn-border:#ffecb3; }
+    :root { --yes:#c8e6c9; --no:#ffcdd2; --border:#ddd; --bg:#f6f6f6; --warn:#fff8e1; --warn-border:#ffecb3; --active:#0b5ed7; --activeText:#fff; }
     body { font-family: Arial, sans-serif; margin: 24px; }
     h2 { margin-top: 0; }
     .controls { display: grid; grid-template-columns: 1fr auto auto auto; gap: 12px; align-items: center; }
     .controls input[type="text"], .controls select, .controls button { padding: 8px; font-size: 14px; }
     .views { display: flex; gap: 8px; }
+    .views button { border: 1px solid #ccc; background: #fff; cursor: pointer; border-radius: 4px; }
+    .views button.active { background: var(--active); color: var(--activeText); border-color: var(--active); }
     .toggle { display: flex; gap: 8px; align-items: center; }
     .subcontrols { display: flex; gap: 8px; align-items: center; }
     table { border-collapse: collapse; width: 100%; margin-top: 16px; }
@@ -22,29 +24,43 @@
     .hidden { display: none; }
     .footer { margin-top: 16px; font-size: 12px; color: #666; }
     .warn { background: var(--warn); border: 1px solid var(--warn-border); padding: 10px 12px; margin-bottom: 12px; }
+    @media (max-width: 900px) {
+      table { font-size: 13px; }
+      .controls { grid-template-columns: 1fr; }
+    }
+    /* Start hidden; JS shows it in Feature view */
+    #hideXWrap { display: none; }
   </style>
 </head>
 <body>
-  <h2>Manikin Feature Map</h2>
+  <h2>Manikin Feature Finder</h2>
 
   <div id="banner" class="warn hidden">
     ⚠️ Couldn’t build the data model. Open DevTools (F12) → Console for details.
   </div>
 
   <div class="controls">
+    <!-- Search -->
     <input id="searchInput" type="text" placeholder="Search (Feature/Manikin)..." />
+
+    <!-- View buttons -->
     <div class="views">
-      <button id="btnComplete">Complete view</button>
-      <button id="btnFeature">Feature view</button>
-      <button id="btnManikin">Manikin view</button>
+      <button id="btnComplete" aria-pressed="true" class="active">Complete view</button>
+      <button id="btnFeature" aria-pressed="false">Feature view</button>
+      <button id="btnManikin" aria-pressed="false">Manikin view</button>
     </div>
-    <label class="toggle">
+
+    <!-- Hide X toggle (visible only in Feature view) -->
+    <label class="toggle" id="hideXWrap">
       <input type="checkbox" id="hideX" />
       <span>Hide unsupported (X)</span>
     </label>
+
+    <!-- Per-view selectors -->
     <div class="subcontrols">
       <label for="featureSelect">Feature:</label>
       <select id="featureSelect"></select>
+
       <label for="manikinSelect">Manikin:</label>
       <select id="manikinSelect"></select>
     </div>
@@ -52,7 +68,7 @@
 
   <table id="resultsTable"></table>
 
-  <!-- Early global error catcher -->
+  <!-- Early global error catcher & boot logs -->
   <script>
     window.addEventListener('error', function (e) {
       console.log('Global error:', e.message, e.filename, e.lineno, e.colno);
@@ -63,51 +79,57 @@
     console.log('🔎 mapping.html loaded');
   </script>
 
-  <!-- Embedded CSV -->
+  <!-- Embedded CSV: uses \u2713 instead of literal ✓ for safe encoding -->
   <script>
+    const TICK = '\u2713';
     const csv = `"Feature","SimMan 3G Plus","SimMan 3G","SimMan 3G Trauma","SimMan 3G Mystic","SimMan Essential","SimMan Essential Bleeding","SimMan ALS","Mama Anne","SimMom","Nursing Anne Simulator","SimBaby","SimJunior","SimNewb"
-"Fluids","✓ FluidsControl.xaml","X","X","X","X","X","X","X","X","X","X","X","X"
-"Circulation","X","X","X","X","✓ Circulation_Fluids.xaml","X","✓ Circulation_Fluids.xaml","X","✓ BleedingView.xaml","✓ Circulation_Fluids.xaml","X","X","X"
-"Circulation & Bleeding","✓ Circulation_Bleeding.xaml","X","X","X","X","X","X","✓ BleedingView.xaml","X","X","X","X","X"
-"Circulation & Fluids","X","✓ Circulation_Fluids.xaml","✓ Circulation_Fluids.xaml","✓ Circulation_Fluids.xaml","X","✓ Circulation_Fluids.xaml","X","X","X","X","X","X","X"
-"Circulation & Motions","X","X","X","X","X","X","X","X","X","X","✓ Circulation_Fluids.xaml","✓ Circulation_Fluids.xaml","✓ Circulation_Fluids.xaml"
-"Convulsions","✓ ConvulsionsControl.xaml","X","X","X","X","X","X","✓ ConvulsionsControl.xaml","✓ ConvulsionsControl.xaml","X","X","X","X"
-"EFM","X","X","X","X","X","X","X","✓ CtgInstructorMonitor_View.xaml","✓ CtgInstructorMonitor_View.xaml","X","X","X","X"
-"EFM Options","X","X","X","X","X","X","X","✓ CtgOptionsView.xaml","✓ CtgOptionsView.xaml","X","X","X","X"
-"Delivery","X","X","X","X","X","X","X","✓ Obstetrics_View.xaml","✓ Obstetrics_View.xaml","X","X","X","X"
-"CPR","✓ QCPRLiveView.xaml","✓ QCPRLiveView.xaml","✓ QCPRLiveView.xaml","✓ QCPRLiveView.xaml","✓ QCPRLiveView.xaml","✓ QCPRLiveView.xaml","✓ QCPRLiveView.xaml","✓ QCPRLiveView.xaml","X","X","✓ QCPRLiveView.xaml","X","X"
-"CPR History","✓ QCPRHistoryView.xaml","✓ QCPRHistoryView.xaml","✓ QCPRHistoryView.xaml","✓ QCPRHistoryView.xaml","✓ QCPRHistoryView.xaml","✓ QCPRHistoryView.xaml","✓ QCPRHistoryView.xaml","✓ QCPRHistoryView.xaml","X","X","✓ QCPRHistoryView.xaml","X","X"
-"Airway & Breathing","✓ AirwayBreathing.xaml","✓ AirwayBreathing.xaml","✓ AirwayBreathing.xaml","✓ AirwayBreathing.xaml","✓ AirwayBreathing.xaml","✓ AirwayBreathing.xaml","✓ AirwayBreathing.xaml","✓ AirwayBreathing.xaml","✓ AirwayBreathing.xaml","✓ AirwayBreathing.xaml","✓ AirwayBreathing.xaml","✓ AirwayBreathing.xaml","✓ AirwayBreathing.xaml"
-"Events","✓ EventsView_View.xaml","✓ EventsView_View.xaml","✓ EventsView_View.xaml","✓ EventsView_View.xaml","✓ EventsView_View.xaml","✓ EventsView_View.xaml","✓ EventsView_View.xaml","✓ EventsView_View.xaml","✓ EventsView_View.xaml","✓ EventsView_View.xaml","✓ EventsView_View.xaml","✓ EventsView_View.xaml","✓ EventsView_View.xaml"
-"Eyes","✓ EyeControl.cs","✓ EyeControl.cs","✓ EyeControl.cs","✓ EyeControl.cs","✓ EyeControl.cs","✓ EyeControl.cs","✓ EyeControl.cs","✓ EyeControl.cs","✓ EyeControl.cs","✓ EyeControl.cs","✓ EyeControl.cs","✓ EyeControl.cs","✓ EyeControl.cs"
-"Ongoing Care","✓ StateView.xaml","✓ StateView.xaml","✓ StateView.xaml","✓ StateView.xaml","✓ StateView.xaml","✓ StateView.xaml","✓ StateView.xaml","✓ StateView.xaml","✓ StateView.xaml","✓ StateView.xaml","✓ StateView.xaml","✓ StateView.xaml","✓ StateView.xaml"
-"Patient Monitor","✓ PatientMonitorLayout.cpp","✓ PatientMonitorLayout.cpp","✓ PatientMonitorLayout.cpp","✓ PatientMonitorLayout.cpp","✓ PatientMonitorLayout.cpp","✓ PatientMonitorLayout.cpp","✓ PatientMonitorLayout.cpp","✓ PatientMonitorLayout.cpp","✓ PatientMonitorLayout.cpp","✓ PatientMonitorLayout.cpp","✓ PatientMonitorLayout.cpp","✓ PatientMonitorLayout.cpp","✓ PatientMonitorLayout.cpp"
-"Session Control","✓ SessionControl.xaml","✓ SessionControl.xaml","✓ SessionControl.xaml","✓ SessionControl.xaml","✓ SessionControl.xaml","✓ SessionControl.xaml","✓ SessionControl.xaml","✓ SessionControl.xaml","✓ SessionControl.xaml","✓ SessionControl.xaml","✓ SessionControl.xaml","✓ SessionControl.xaml","✓ SessionControl.xaml"
-"Sounds","✓ SoundControl.cs","✓ SoundControl.cs","✓ SoundControl.cs","✓ SoundControl.cs","✓ SoundControl.cs","✓ SoundControl.cs","✓ SoundControl.cs","✓ SoundControl.cs","✓ SoundControl.cs","✓ SoundControl.cs","✓ SoundControl.cs","✓ SoundControl.cs","✓ SoundControl.cs"
-"Status Bar","✓ StatusBar.xaml","✓ StatusBar.xaml","✓ StatusBar.xaml","✓ StatusBar.xaml","✓ StatusBar.xaml","✓ StatusBar.xaml","✓ StatusBar.xaml","✓ StatusBar.xaml","✓ StatusBar.xaml","✓ StatusBar.xaml","✓ StatusBar.xaml","✓ StatusBar.xaml","✓ StatusBar.xaml"
-"Theme Control","✓ StatesView_View.xaml","✓ StatesView_View.xaml","✓ StatesView_View.xaml","✓ StatesView_View.xaml","✓ StatesView_View.xaml","✓ StatesView_View.xaml","✓ StatesView_View.xaml","✓ StatesView_View.xaml","✓ StatesView_View.xaml","✓ StatesView_View.xaml","✓ StatesView_View.xaml","✓ StatesView_View.xaml","✓ StatesView_View.xaml"
-"Session Log","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml"
-"Simulator","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml"
-"Local PC Status","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml"
-"Connections Status","✓ ConnectionStatus.xaml","✓ ConnectionStatus.xaml","✓ ConnectionStatus.xaml","✓ ConnectionStatus.xaml","✓ ConnectionStatus.xaml","✓ ConnectionStatus.xaml","✓ ConnectionStatus.xaml","✓ ConnectionStatus.xaml","✓ ConnectionStatus.xaml","✓ ConnectionStatus.xaml","✓ ConnectionStatus.xaml","✓ ConnectionStatus.xaml","✓ ConnectionStatus.xaml"
-"Prediction","✓ ParameterPredictionWindow.cpp","✓ ParameterPredictionWindow.cpp","✓ ParameterPredictionWindow.cpp","✓ ParameterPredictionWindow.cpp","✓ ParameterPredictionWindow.cpp","✓ ParameterPredictionWindow.cpp","✓ ParameterPredictionWindow.cpp","✓ ParameterPredictionWindow.cpp","✓ ParameterPredictionWindow.cpp","✓ ParameterPredictionWindow.cpp","✓ ParameterPredictionWindow.cpp","✓ ParameterPredictionWindow.cpp","✓ ParameterPredictionWindow.cpp"
-"Trends","✓ TTrendHandlerControllerGUI.cs","✓ TTrendHandlerControllerGUI.cs","✓ TTrendHandlerControllerGUI.cs","✓ TTrendHandlerControllerGUI.cs","✓ TTrendHandlerControllerGUI.cs","✓ TTrendHandlerControllerGUI.cs","✓ TTrendHandlerControllerGUI.cs","✓ TTrendHandlerControllerGUI.cs","✓ TTrendHandlerControllerGUI.cs","✓ TTrendHandlerControllerGUI.cs","✓ TTrendHandlerControllerGUI.cs","✓ TTrendHandlerControllerGUI.cs","✓ TTrendHandlerControllerGUI.cs"
-"Cardiac","✓ heartRhythmController.cs","✓ heartRhythmController.cs","✓ heartRhythmController.cs","✓ heartRhythmController.cs","✓ heartRhythmController.cs","✓ heartRhythmController.cs","✓ heartRhythmController.cs","✓ heartRhythmController.cs","✓ heartRhythmController.cs","✓ heartRhythmController.cs","✓ heartRhythmController.cs","✓ heartRhythmController.cs","✓ heartRhythmController.cs"
-"Comments","✓ CommentControl.cs","✓ CommentControl.cs","✓ CommentControl.cs","✓ CommentControl.cs","✓ CommentControl.cs","✓ CommentControl.cs","✓ CommentControl.cs","✓ CommentControl.cs","✓ CommentControl.cs","✓ CommentControl.cs","✓ CommentControl.cs","✓ CommentControl.cs","✓ CommentControl.cs"
-"Learner Patient Monitor Buttons","✓ MonitorButtonsController.cs","✓ MonitorButtonsController.cs","✓ MonitorButtonsController.cs","✓ MonitorButtonsController.cs","✓ MonitorButtonsController.cs","✓ MonitorButtonsController.cs","✓ MonitorButtonsController.cs","✓ MonitorButtonsController.cs","✓ MonitorButtonsController.cs","✓ MonitorButtonsController.cs","✓ MonitorButtonsController.cs","✓ MonitorButtonsController.cs","✓ MonitorButtonsController.cs"`;
-    console.log('📄 CSV string length:', csv.length);
+"Fluids","${TICK} FluidsControl.xaml","X","X","X","X","X","X","X","X","X","X","X","X"
+"Circulation","X","X","X","X","${TICK} Circulation_Fluids.xaml","X","${TICK} Circulation_Fluids.xaml","X","${TICK} BleedingView.xaml","${TICK} Circulation_Fluids.xaml","X","X","X"
+"Circulation & Bleeding","${TICK} Circulation_Bleeding.xaml","X","X","X","X","X","X","${TICK} BleedingView.xaml","X","X","X","X","X"
+"Circulation & Fluids","X","${TICK} Circulation_Fluids.xaml","${TICK} Circulation_Fluids.xaml","${TICK} Circulation_Fluids.xaml","X","${TICK} Circulation_Fluids.xaml","X","X","X","X","X","X","X"
+"Circulation & Motions","X","X","X","X","X","X","X","X","X","X","${TICK} Circulation_Fluids.xaml","${TICK} Circulation_Fluids.xaml","${TICK} Circulation_Fluids.xaml"
+"Convulsions","${TICK} ConvulsionsControl.xaml","X","X","X","X","X","X","${TICK} ConvulsionsControl.xaml","${TICK} ConvulsionsControl.xaml","X","X","X","X"
+"EFM","X","X","X","X","X","X","X","${TICK} CtgInstructorMonitor_View.xaml","${TICK} CtgInstructorMonitor_View.xaml","X","X","X","X"
+"EFM Options","X","X","X","X","X","X","X","${TICK} CtgOptionsView.xaml","${TICK} CtgOptionsView.xaml","X","X","X","X"
+"Delivery","X","X","X","X","X","X","X","${TICK} Obstetrics_View.xaml","${TICK} Obstetrics_View.xaml","X","X","X","X"
+"CPR","${TICK} QCPRLiveView.xaml","${TICK} QCPRLiveView.xaml","${TICK} QCPRLiveView.xaml","${TICK} QCPRLiveView.xaml","${TICK} QCPRLiveView.xaml","${TICK} QCPRLiveView.xaml","${TICK} QCPRLiveView.xaml","${TICK} QCPRLiveView.xaml","X","X","${TICK} QCPRLiveView.xaml","X","X"
+"CPR History","${TICK} QCPRHistoryView.xaml","${TICK} QCPRHistoryView.xaml","${TICK} QCPRHistoryView.xaml","${TICK} QCPRHistoryView.xaml","${TICK} QCPRHistoryView.xaml","${TICK} QCPRHistoryView.xaml","${TICK} QCPRHistoryView.xaml","${TICK} QCPRHistoryView.xaml","X","X","${TICK} QCPRHistoryView.xaml","X","X"
+"Airway & Breathing","${TICK} AirwayBreathing.xaml","${TICK} AirwayBreathing.xaml","${TICK} AirwayBreathing.xaml","${TICK} AirwayBreathing.xaml","${TICK} AirwayBreathing.xaml","${TICK} AirwayBreathing.xaml","${TICK} AirwayBreathing.xaml","${TICK} AirwayBreathing.xaml","${TICK} AirwayBreathing.xaml","${TICK} AirwayBreathing.xaml","${TICK} AirwayBreathing.xaml","${TICK} AirwayBreathing.xaml","${TICK} AirwayBreathing.xaml"
+"Events","${TICK} EventsView_View.xaml","${TICK} EventsView_View.xaml","${TICK} EventsView_View.xaml","${TICK} EventsView_View.xaml","${TICK} EventsView_View.xaml","${TICK} EventsView_View.xaml","${TICK} EventsView_View.xaml","${TICK} EventsView_View.xaml","${TICK} EventsView_View.xaml","${TICK} EventsView_View.xaml","${TICK} EventsView_View.xaml","${TICK} EventsView_View.xaml","${TICK} EventsView_View.xaml"
+"Eyes","${TICK} EyeControl.cs","${TICK} EyeControl.cs","${TICK} EyeControl.cs","${TICK} EyeControl.cs","${TICK} EyeControl.cs","${TICK} EyeControl.cs","${TICK} EyeControl.cs","${TICK} EyeControl.cs","${TICK} EyeControl.cs","${TICK} EyeControl.cs","${TICK} EyeControl.cs","${TICK} EyeControl.cs","${TICK} EyeControl.cs"
+"Ongoing Care","${TICK} StateView.xaml","${TICK} StateView.xaml","${TICK} StateView.xaml","${TICK} StateView.xaml","${TICK} StateView.xaml","${TICK} StateView.xaml","${TICK} StateView.xaml","${TICK} StateView.xaml","${TICK} StateView.xaml","${TICK} StateView.xaml","${TICK} StateView.xaml","${TICK} StateView.xaml","${TICK} StateView.xaml"
+"Patient Monitor","${TICK} PatientMonitorLayout.cpp","${TICK} PatientMonitorLayout.cpp","${TICK} PatientMonitorLayout.cpp","${TICK} PatientMonitorLayout.cpp","${TICK} PatientMonitorLayout.cpp","${TICK} PatientMonitorLayout.cpp","${TICK} PatientMonitorLayout.cpp","${TICK} PatientMonitorLayout.cpp","${TICK} PatientMonitorLayout.cpp","${TICK} PatientMonitorLayout.cpp","${TICK} PatientMonitorLayout.cpp","${TICK} PatientMonitorLayout.cpp","${TICK} PatientMonitorLayout.cpp"
+"Session Control","${TICK} SessionControl.xaml","${TICK} SessionControl.xaml","${TICK} SessionControl.xaml","${TICK} SessionControl.xaml","${TICK} SessionControl.xaml","${TICK} SessionControl.xaml","${TICK} SessionControl.xaml","${TICK} SessionControl.xaml","${TICK} SessionControl.xaml","${TICK} SessionControl.xaml","${TICK} SessionControl.xaml","${TICK} SessionControl.xaml","${TICK} SessionControl.xaml"
+"Sounds","${TICK} SoundControl.cs","${TICK} SoundControl.cs","${TICK} SoundControl.cs","${TICK} SoundControl.cs","${TICK} SoundControl.cs","${TICK} SoundControl.cs","${TICK} SoundControl.cs","${TICK} SoundControl.cs","${TICK} SoundControl.cs","${TICK} SoundControl.cs","${TICK} SoundControl.cs","${TICK} SoundControl.cs","${TICK} SoundControl.cs"
+"Status Bar","${TICK} StatusBar.xaml","${TICK} StatusBar.xaml","${TICK} StatusBar.xaml","${TICK} StatusBar.xaml","${TICK} StatusBar.xaml","${TICK} StatusBar.xaml","${TICK} StatusBar.xaml","${TICK} StatusBar.xaml","${TICK} StatusBar.xaml","${TICK} StatusBar.xaml","${TICK} StatusBar.xaml","${TICK} StatusBar.xaml","${TICK} StatusBar.xaml"
+"Theme Control","${TICK} StatesView_View.xaml","${TICK} StatesView_View.xaml","${TICK} StatesView_View.xaml","${TICK} StatesView_View.xaml","${TICK} StatesView_View.xaml","${TICK} StatesView_View.xaml","${TICK} StatesView_View.xaml","${TICK} StatesView_View.xaml","${TICK} StatesView_View.xaml","${TICK} StatesView_View.xaml","${TICK} StatesView_View.xaml","${TICK} StatesView_View.xaml","${TICK} StatesView_View.xaml"
+"Session Log","${TICK} LogView.xaml","${TICK} LogView.xaml","${TICK} LogView.xaml","${TICK} LogView.xaml","${TICK} LogView.xaml","${TICK} LogView.xaml","${TICK} LogView.xaml","${TICK} LogView.xaml","${TICK} LogView.xaml","${TICK} LogView.xaml","${TICK} LogView.xaml","${TICK} LogView.xaml","${TICK} LogView.xaml"
+"Simulator","${TICK} ManikinStatus.xaml","${TICK} ManikinStatus.xaml","${TICK} ManikinStatus.xaml","${TICK} ManikinStatus.xaml","${TICK} ManikinStatus.xaml","${TICK} ManikinStatus.xaml","${TICK} ManikinStatus.xaml","${TICK} ManikinStatus.xaml","${TICK} ManikinStatus.xaml","${TICK} ManikinStatus.xaml","${TICK} ManikinStatus.xaml","${TICK} ManikinStatus.xaml","${TICK} ManikinStatus.xaml"
+"Local PC Status","${TICK} LocalPCStatus.xaml","${TICK} LocalPCStatus.xaml","${TICK} LocalPCStatus.xaml","${TICK} LocalPCStatus.xaml","${TICK} LocalPCStatus.xaml","${TICK} LocalPCStatus.xaml","${TICK} LocalPCStatus.xaml","${TICK} LocalPCStatus.xaml","${TICK} LocalPCStatus.xaml","${TICK} LocalPCStatus.xaml","${TICK} LocalPCStatus.xaml","${TICK} LocalPCStatus.xaml","${TICK} LocalPCStatus.xaml"
+"Connections Status","${TICK} ConnectionStatus.xaml","${TICK} ConnectionStatus.xaml","${TICK} ConnectionStatus.xaml","${TICK} ConnectionStatus.xaml","${TICK} ConnectionStatus.xaml","${TICK} ConnectionStatus.xaml","${TICK} ConnectionStatus.xaml","${TICK} ConnectionStatus.xaml","${TICK} ConnectionStatus.xaml","${TICK} ConnectionStatus.xaml","${TICK} ConnectionStatus.xaml","${TICK} ConnectionStatus.xaml","${TICK} ConnectionStatus.xaml"
+"Prediction","${TICK} ParameterPredictionWindow.cpp","${TICK} ParameterPredictionWindow.cpp","${TICK} ParameterPredictionWindow.cpp","${TICK} ParameterPredictionWindow.cpp","${TICK} ParameterPredictionWindow.cpp","${TICK} ParameterPredictionWindow.cpp","${TICK} ParameterPredictionWindow.cpp","${TICK} ParameterPredictionWindow.cpp","${TICK} ParameterPredictionWindow.cpp","${TICK} ParameterPredictionWindow.cpp","${TICK} ParameterPredictionWindow.cpp","${TICK} ParameterPredictionWindow.cpp","${TICK} ParameterPredictionWindow.cpp"
+"Trends","${TICK} TTrendHandlerControllerGUI.cs","${TICK} TTrendHandlerControllerGUI.cs","${TICK} TTrendHandlerControllerGUI.cs","${TICK} TTrendHandlerControllerGUI.cs","${TICK} TTrendHandlerControllerGUI.cs","${TICK} TTrendHandlerControllerGUI.cs","${TICK} TTrendHandlerControllerGUI.cs","${TICK} TTrendHandlerControllerGUI.cs","${TICK} TTrendHandlerControllerGUI.cs","${TICK} TTrendHandlerControllerGUI.cs","${TICK} TTrendHandlerControllerGUI.cs","${TICK} TTrendHandlerControllerGUI.cs","${TICK} TTrendHandlerControllerGUI.cs"
+"Cardiac","${TICK} heartRhythmController.cs","${TICK} heartRhythmController.cs","${TICK} heartRhythmController.cs","${TICK} heartRhythmController.cs","${TICK} heartRhythmController.cs","${TICK} heartRhythmController.cs","${TICK} heartRhythmController.cs","${TICK} heartRhythmController.cs","${TICK} heartRhythmController.cs","${TICK} heartRhythmController.cs","${TICK} heartRhythmController.cs","${TICK} heartRhythmController.cs","${TICK} heartRhythmController.cs"
+"Comments","${TICK} CommentControl.cs","${TICK} CommentControl.cs","${TICK} CommentControl.cs","${TICK} CommentControl.cs","${TICK} CommentControl.cs","${TICK} CommentControl.cs","${TICK} CommentControl.cs","${TICK} CommentControl.cs","${TICK} CommentControl.cs","${TICK} CommentControl.cs","${TICK} CommentControl.cs","${TICK} CommentControl.cs","${TICK} CommentControl.cs"
+"Learner Patient Monitor Buttons","${TICK} MonitorButtonsController.cs","${TICK} MonitorButtonsController.cs","${TICK} MonitorButtonsController.cs","${TICK} MonitorButtonsController.cs","${TICK} MonitorButtonsController.cs","${TICK} MonitorButtonsController.cs","${TICK} MonitorButtonsController.cs","${TICK} MonitorButtonsController.cs","${TICK} MonitorButtonsController.cs","${TICK} MonitorButtonsController.cs","${TICK} MonitorButtonsController.cs","${TICK} MonitorButtonsController.cs","${TICK} MonitorButtonsController.cs"`;
   </script>
 
   <!-- Main logic -->
   <script>
     function parseCSV(text) {
-      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      // Trim leading/trailing blank lines to avoid empty header
+      const lines = text.split(/\r?\n/).map(l => l.trim());
+      // Remove any empty lines at the start/end
+      while (lines.length && !lines[0]) lines.shift();
+      while (lines.length && !lines[lines.length-1]) lines.pop();
       const rows = lines.map(line => {
         const cells = []; let i = 0, inQuotes = false, cell = '';
         while (i < line.length) {
           const ch = line[i];
-          if (ch === '"') { if (inQuotes && line[i+1] === '"') { cell += '"'; i += 2; } else { inQuotes = !inQuotes; i++; } }
-          else if (ch === ',' && !inQuotes) { cells.push(cell); cell = ''; i++; }
+          if (ch === '"') {
+            if (inQuotes && line[i+1] === '"') { cell += '"'; i += 2; }
+            else { inQuotes = !inQuotes; i++; }
+          } else if (ch === ',' && !inQuotes) { cells.push(cell); cell = ''; i++; }
           else { cell += ch; i++; }
         }
         cells.push(cell);
@@ -117,17 +139,20 @@
     }
 
     function buildModel(rows) {
-      const header = rows[0], manikins = header.slice(1);
-      const dataByFeature = {}, dataByManikin = {};
+      if (!rows || rows.length < 2) return null;
+      const header = rows[0];
+      const manikins = header.slice(1);
+      const dataByFeature = {};
+      const dataByManikin = {};
       manikins.forEach(m => dataByManikin[m] = {});
       for (let r = 1; r < rows.length; r++) {
         const feature = rows[r][0]; if (!feature) continue;
         dataByFeature[feature] = {};
         for (let c = 1; c < header.length; c++) {
-          const m = header[c], raw = rows[r][c] || '';
-          const supported = raw.startsWith('✓') ? '✓' : 'X';
-          dataByFeature[feature][m] = supported;
-          dataByManikin[m][feature] = supported;
+          const m = header[c], raw = (rows[r][c] || '').trim();
+          const v = (raw.startsWith('\u2713') || raw.startsWith('✓')) ? '✓' : 'X';
+          dataByFeature[feature][m] = v;
+          dataByManikin[m][feature] = v;
         }
       }
       return { features: Object.keys(dataByFeature), manikins, dataByFeature, dataByManikin };
@@ -142,24 +167,33 @@
       fRows.forEach(f => {
         html += `<tr><th>${f}</th>`;
         mCols.forEach(m => {
-          const v = model.dataByFeature[f][m]; if (hideX && v !== '✓') html += `<td class="hidden"></td>`;
+          const v = model.dataByFeature[f][m];
+          if (hideX && v !== '✓') html += `<td class="hidden"></td>`;
           else html += `<td class="${v==='✓'?'yes':'no'}">${v}</td>`;
         });
         html += `</tr>`;
       });
       el.innerHTML = html;
     }
+
     function renderFeature(el, f, model, term = '', hideX = false) {
       const t = term.toLowerCase(); el.innerHTML = `<tr><th>Manikin</th><th>${f}</th></tr>`;
-      const row = model.dataByFeature[f]; Object.keys(row).forEach(m => {
-        const v = row[m]; if (hideX && v !== '✓') return; if (t && !m.toLowerCase().includes(t)) return;
+      const row = model.dataByFeature[f];
+      Object.keys(row).forEach(m => {
+        const v = row[m];
+        if (hideX && v !== '✓') return;
+        if (t && !m.toLowerCase().includes(t)) return;
         el.innerHTML += `<tr><td>${m}</td><td class="${v==='✓'?'yes':'no'}">${v}</td></tr>`;
       });
     }
+
     function renderManikin(el, m, model, term = '', hideX = false) {
       const t = term.toLowerCase(); el.innerHTML = `<tr><th>Feature</th><th>${m}</th></tr>`;
-      const row = model.dataByManikin[m]; Object.keys(row).forEach(f => {
-        const v = row[f]; if (hideX && v !== '✓') return; if (t && !f.toLowerCase().includes(t)) return;
+      const row = model.dataByManikin[m];
+      Object.keys(row).forEach(f => {
+        const v = row[f];
+        if (hideX && v !== '✓') return;
+        if (t && !f.toLowerCase().includes(t)) return;
         el.innerHTML += `<tr><td>${f}</td><td class="${v==='✓'?'yes':'no'}">${v}</td></tr>`;
       });
     }
@@ -180,25 +214,48 @@
       const manikinSelect = document.getElementById('manikinSelect');
       const table = document.getElementById('resultsTable');
       const searchInput = document.getElementById('searchInput');
+      const hideXWrap = document.getElementById('hideXWrap');
       const hideX = document.getElementById('hideX');
       const btnComplete = document.getElementById('btnComplete');
       const btnFeature = document.getElementById('btnFeature');
       const btnManikin = document.getElementById('btnManikin');
 
-      // Populate selects
+      // Populate selects (ensure they are never empty)
+      featureSelect.innerHTML = '';
       model.features.forEach(f => featureSelect.appendChild(new Option(f, f)));
+      manikinSelect.innerHTML = '';
       model.manikins.forEach(m => manikinSelect.appendChild(new Option(m, m)));
-      featureSelect.value = model.features[0];
-      manikinSelect.value = model.manikins[0];
+      if (!featureSelect.value && featureSelect.options.length) featureSelect.value = featureSelect.options[0].value;
+      if (!manikinSelect.value && manikinSelect.options.length) manikinSelect.value = manikinSelect.options[0].value;
 
       // View state
-      let view = 'complete';
+      let view = 'complete'; // default
+      function setActive(btn) {
+        [btnComplete, btnFeature, btnManikin].forEach(b => {
+          const active = (b === btn);
+          b.classList.toggle('active', active);
+          b.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+      }
       function render() {
         const term = searchInput.value.trim();
         const hx = hideX.checked;
-        if (view === 'complete') renderComplete(table, model, term, hx);
-        else if (view === 'feature') renderFeature(table, featureSelect.value, model, term, hx);
-        else renderManikin(table, manikinSelect.value, model, term, hx);
+
+        // Show Hide-X only in Feature view
+        hideXWrap.style.display = (view === 'feature') ? 'flex' : 'none';
+
+        if (view === 'complete') {
+          renderComplete(table, model, term, /*hideX*/ false);
+          setActive(btnComplete);
+        } else if (view === 'feature') {
+          const f = featureSelect.value || model.features[0];
+          renderFeature(table, f, model, term, hx);
+          setActive(btnFeature);
+        } else {
+          const m = manikinSelect.value || model.manikins[0];
+          renderManikin(table, m, model, term, /*hideX*/ false);
+          setActive(btnManikin);
+        }
       }
 
       // Initial render
@@ -216,7 +273,7 @@
   </script>
 
   <div class="footer">
-    Tip: Use <strong>Complete view</strong> to see the full matrix. Search filters rows/columns; enable “Hide unsupported (X)” to focus only on ✓.
+    Tip: “Complete view” shows the full matrix. “Feature view” lets you hide unsupported (X). Active view is highlighted.
   </div>
 </body>
 </html>
