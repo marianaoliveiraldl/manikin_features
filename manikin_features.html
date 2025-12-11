@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Manikin Feature Map</title>
+  <title>Manikin Feature Finder</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
@@ -11,13 +11,16 @@
       --no: #ffcdd2;
       --border: #ddd;
       --bg: #f6f6f6;
+      --warn: #fff8e1;
+      --warn-border: #ffecb3;
     }
     body { font-family: Arial, sans-serif; margin: 24px; }
     h2 { margin-top: 0; }
     .controls { display: grid; grid-template-columns: 1fr auto auto auto; gap: 12px; align-items: center; }
     .controls input[type="text"], .controls select, .controls button { padding: 8px; font-size: 14px; }
-    .toggle { display: flex; gap: 12px; align-items: center; }
     .views { display: flex; gap: 8px; }
+    .toggle { display: flex; gap: 8px; align-items: center; }
+    .subcontrols { display: flex; gap: 8px; align-items: center; }
     table { border-collapse: collapse; width: 100%; margin-top: 16px; }
     th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; white-space: nowrap; }
     th { background: var(--bg); position: sticky; top: 0; z-index: 1; }
@@ -25,8 +28,13 @@
     .no  { background-color: var(--no); }
     .footer { margin-top: 16px; font-size: 12px; color: #666; }
     .muted { color: #666; font-size: 12px; }
-    .subcontrols { display: flex; gap: 8px; align-items: center; }
     .hidden { display: none; }
+    .warn {
+      background: var(--warn);
+      border: 1px solid var(--warn-border);
+      padding: 10px 12px;
+      margin-bottom: 12px;
+    }
     @media (max-width: 900px) {
       table { font-size: 13px; }
       .controls { grid-template-columns: 1fr; }
@@ -35,6 +43,10 @@
 </head>
 <body>
   <h2>Manikin Feature Finder</h2>
+
+  <div id="banner" class="warn hidden">
+    ⚠️ Couldn’t populate dropdowns — CSV parsing returned no features. Check Console (F12) for errors.
+  </div>
 
   <div class="controls">
     <!-- Search -->
@@ -67,9 +79,28 @@
 
   <!-- Embedded CSV from your file -->
   <script>
+    // Keep this exact text block — it's safer for GitHub Pages copy/paste.
     const csv = `"Feature","SimMan 3G Plus","SimMan 3G","SimMan 3G Trauma","SimMan 3G Mystic","SimMan Essential","SimMan Essential Bleeding","SimMan ALS","Mama Anne","SimMom","Nursing Anne Simulator","SimBaby","SimJunior","SimNewb"
 "Fluids","✓ FluidsControl.xaml","X","X","X","X","X","X","X","X","X","X","X","X"
 "Circulation","X","X","X","X","✓ Circulation_Fluids.xaml","X","✓ Circulation_Fluids.xaml","X","✓ BleedingView.xaml","✓ Circulation_Fluids.xaml","X","X","X"
 "Circulation & Bleeding","✓ Circulation_Bleeding.xaml","X","X","X","X","X","X","✓ BleedingView.xaml","X","X","X","X","X"
 "Circulation & Fluids","X","✓ Circulation_Fluids.xaml","✓ Circulation_Fluids.xaml","✓ Circulation_Fluids.xaml","X","✓ Circulation_Fluids.xaml","X","X","X","X","X","X","X"
 "Circulation & Motions","X","X","X","X","X","X","X","X","X","X","✓ Circulation_Fluids.xaml","✓ Circulation_Fluids.xaml","✓ Circulation_Fluids.xaml"
+"Convulsions","✓ ConvulsionsControl.xaml","X","X","X","X","X","X","✓ ConvulsionsControl.xaml","✓ ConvulsionsControl.xaml","X","X","X","X"
+"EFM","X","X","X","X","X","X","X","✓ CtgInstructorMonitor_View.xaml","✓ CtgInstructorMonitor_View.xaml","X","X","X","X"
+"EFM Options","X","X","X","X","X","X","X","✓ CtgOptionsView.xaml","✓ CtgOptionsView.xaml","X","X","X","X"
+"Delivery","X","X","X","X","X","X","X","✓ Obstetrics_View.xaml","✓ Obstetrics_View.xaml","X","X","X","X"
+"CPR","✓ QCPRLiveView.xaml","✓ QCPRLiveView.xaml","✓ QCPRLiveView.xaml","✓ QCPRLiveView.xaml","✓ QCPRLiveView.xaml","✓ QCPRLiveView.xaml","✓ QCPRLiveView.xaml","✓ QCPRLiveView.xaml","X","X","✓ QCPRLiveView.xaml","X","X"
+"CPR History","✓ QCPRHistoryView.xaml","✓ QCPRHistoryView.xaml","✓ QCPRHistoryView.xaml","✓ QCPRHistoryView.xaml","✓ QCPRHistoryView.xaml","✓ QCPRHistoryView.xaml","✓ QCPRHistoryView.xaml","✓ QCPRHistoryView.xaml","X","X","✓ QCPRHistoryView.xaml","X","X"
+"Airway & Breathing","✓ AirwayBreathing.xaml","✓ AirwayBreathing.xaml","✓ AirwayBreathing.xaml","✓ AirwayBreathing.xaml","✓ AirwayBreathing.xaml","✓ AirwayBreathing.xaml","✓ AirwayBreathing.xaml","✓ AirwayBreathing.xaml","✓ AirwayBreathing.xaml","✓ AirwayBreathing.xaml","✓ AirwayBreathing.xaml","✓ AirwayBreathing.xaml","✓ AirwayBreathing.xaml"
+"Events","✓ EventsView_View.xaml","✓ EventsView_View.xaml","✓ EventsView_View.xaml","✓ EventsView_View.xaml","✓ EventsView_View.xaml","✓ EventsView_View.xaml","✓ EventsView_View.xaml","✓ EventsView_View.xaml","✓ EventsView_View.xaml","✓ EventsView_View.xaml","✓ EventsView_View.xaml","✓ EventsView_View.xaml","✓ EventsView_View.xaml"
+"Eyes","✓ EyeControl.cs","✓ EyeControl.cs","✓ EyeControl.cs","✓ EyeControl.cs","✓ EyeControl.cs","✓ EyeControl.cs","✓ EyeControl.cs","✓ EyeControl.cs","✓ EyeControl.cs","✓ EyeControl.cs","✓ EyeControl.cs","✓ EyeControl.cs","✓ EyeControl.cs"
+"Ongoing Care","✓ StateView.xaml","✓ StateView.xaml","✓ StateView.xaml","✓ StateView.xaml","✓ StateView.xaml","✓ StateView.xaml","✓ StateView.xaml","✓ StateView.xaml","✓ StateView.xaml","✓ StateView.xaml","✓ StateView.xaml","✓ StateView.xaml","✓ StateView.xaml"
+"Patient Monitor","✓ PatientMonitorLayout.cpp","✓ PatientMonitorLayout.cpp","✓ PatientMonitorLayout.cpp","✓ PatientMonitorLayout.cpp","✓ PatientMonitorLayout.cpp","✓ PatientMonitorLayout.cpp","✓ PatientMonitorLayout.cpp","✓ PatientMonitorLayout.cpp","✓ PatientMonitorLayout.cpp","✓ PatientMonitorLayout.cpp","✓ PatientMonitorLayout.cpp","✓ PatientMonitorLayout.cpp","✓ PatientMonitorLayout.cpp"
+"Session Control","✓ SessionControl.xaml","✓ SessionControl.xaml","✓ SessionControl.xaml","✓ SessionControl.xaml","✓ SessionControl.xaml","✓ SessionControl.xaml","✓ SessionControl.xaml","✓ SessionControl.xaml","✓ SessionControl.xaml","✓ SessionControl.xaml","✓ SessionControl.xaml","✓ SessionControl.xaml","✓ SessionControl.xaml"
+"Sounds","✓ SoundControl.cs","✓ SoundControl.cs","✓ SoundControl.cs","✓ SoundControl.cs","✓ SoundControl.cs","✓ SoundControl.cs","✓ SoundControl.cs","✓ SoundControl.cs","✓ SoundControl.cs","✓ SoundControl.cs","✓ SoundControl.cs","✓ SoundControl.cs","✓ SoundControl.cs"
+"Status Bar","✓ StatusBar.xaml","✓ StatusBar.xaml","✓ StatusBar.xaml","✓ StatusBar.xaml","✓ StatusBar.xaml","✓ StatusBar.xaml","✓ StatusBar.xaml","✓ StatusBar.xaml","✓ StatusBar.xaml","✓ StatusBar.xaml","✓ StatusBar.xaml","✓ StatusBar.xaml","✓ StatusBar.xaml"
+"Theme Control","✓ StatesView_View.xaml","✓ StatesView_View.xaml","✓ StatesView_View.xaml","✓ StatesView_View.xaml","✓ StatesView_View.xaml","✓ StatesView_View.xaml","✓ StatesView_View.xaml","✓ StatesView_View.xaml","✓ StatesView_View.xaml","✓ StatesView_View.xaml","✓ StatesView_View.xaml","✓ StatesView_View.xaml","✓ StatesView_View.xaml"
+"Session Log","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml","✓ LogView.xaml"
+"Simulator","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml","✓ ManikinStatus.xaml"
+"Local PC Status","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml","✓ LocalPCStatus.xaml"
