@@ -1,210 +1,229 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Manikin Feature Map</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    :root { --yes:#c8e6c9; --no:#ffcdd2; --border:#ddd; --bg:#f6f6f6; --active:#0b5ed7; --activeText:#fff; }
-    body { font-family: Arial, sans-serif; margin: 24px; }
-    h2 { margin-top: 0; }
-    .controls { display: grid; grid-template-columns: auto auto auto; gap: 12px; align-items: center; }
-    .controls select, .controls button { padding: 8px; font-size: 14px; }
-    .views { display: flex; gap: 8px; }
-    .views button { border: 1px solid #ccc; background: #fff; cursor: pointer; border-radius: 4px; }
-    .views button.active { background: var(--active); color: var(--activeText); border-color: var(--active); }
-    .toggle { display: flex; gap: 8px; align-items: center; }
-    .subcontrols { display: flex; gap: 8px; align-items: center; }
-    table { border-collapse: collapse; width: 100%; margin-top: 16px; }
-    th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; white-space: nowrap; }
-    th { background: var(--bg); position: sticky; top: 0; z-index: 1; }
-    .yes { background-color: var(--yes); }
-    .no  { background-color: var(--no); }
-    .hidden { display: none; }
-    .footer { margin-top: 16px; font-size: 12px; color: #666; }
-    @media (max-width: 900px) {
-      table { font-size: 13px; }
-      .controls { grid-template-columns: 1fr; }
-    }
-    #hideXWrap, #featureSelectWrap, #manikinSelectWrap { display: none; }
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Manikin Feature Map</title>
+<style>
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; margin:2rem;}
+h1{margin-bottom:0.25rem}
+.controls{display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center; margin:0.75rem 0 1rem}
+.controls label{display:flex; align-items:center; gap:0.5rem}
+.subnav{display:flex; gap:0.5rem}
+button.view{padding:0.35rem 0.75rem; border:1px solid #ccc; border-radius:6px; background:#fff; cursor:pointer}
+button.view.active{background:#eef4ff; border-color:#91b2ff}
+.table-wrap{overflow:auto; border:1px solid #ddd; border-radius:8px; padding:0.5rem; background:#fff}
+/* Fit table to content width */
+table{border-collapse:separate; border-spacing:0; width:max-content; display:inline-table}
+th, td{border:1px solid #eee; padding:0.6rem 0.9rem; text-align:center; vertical-align:middle; white-space:nowrap}
+th{position:sticky; top:0; background:#fafafa; z-index:1}
+tr:hover{background:#f9fbff}
+/* Status coloring */
+.yes{background:#eaf7ea; color:#126012; font-weight:700}
+.no{background:#fdeaea; color:#7d0d0d; font-weight:700}
+.dev{background:#fff6e5; color:#7a4d00; font-weight:700}
+/* More noticeable division for LLEAP/SimPad */
+.ops-row{border-top:4px solid #bdbdbd}
+.ops-col{border-left:4px solid #bdbdbd}
+/* Extra gap between Trends and LLEAP in manikin view */
+.gap-col{min-width:12px; border:none !important; background:transparent}
+.gap-cell{min-width:12px; border:none !important; background:transparent}
+.legend{margin-top:0.5rem; color:#666; font-size:0.9rem}
+.badge{display:inline-block; padding:0.15rem 0.5rem; border-radius:999px; font-size:0.8rem}
+.badge.yes{background:#d7f1d7; color:#0d4e0d}
+.badge.no{background:#f9d7d7; color:#5c0909}
+.badge.dev{background:#ffe9c4; color:#5c3a00}
+.hidden{display:none !important}
+</style>
 </head>
 <body>
-  <h2>Manikin Feature Map</h2>
+<h1>Manikin Feature Map</h1>
 
-  <div class="controls">
-    <div class="views">
-      <button id="btnComplete" class="active">Complete view</button>
-      <button id="btnFeature">Feature view</button>
-      <button id="btnManikin">Manikin view</button>
-    </div>
-    <div class="subcontrols" id="featureSelectWrap">
-      <label for="featureSelect">Feature:</label>
-      <select id="featureSelect"></select>
-    </div>
-    <div class="subcontrols" id="manikinSelectWrap">
-      <label for="manikinSelect">Manikin:</label>
-      <select id="manikinSelect"></select>
-    </div>
-    <label class="toggle" id="hideXWrap">
-      <input type="checkbox" id="hideX" />
-      <span>Hide unsupported (X)</span>
-    </label>
+<div class="controls">
+  <div class="subnav">
+    <button id="btn-complete" class="view active" data-mode="complete">Complete view</button>
+    <button id="btn-feature" class="view" data-mode="feature">Feature view</button>
+    <button id="btn-manikin" class="view" data-mode="manikin">Manikin view</button>
   </div>
+  <label id="feature-wrap" class="hidden">Feature:
+    <select id="feature-select"></select>
+  </label>
+  <label id="manikin-wrap" class="hidden">Manikin:
+    <select id="manikin-select"></select>
+  </label>
+  <label id="hidex-wrap" class="hidden"><input type="checkbox" id="hide-x"/> Hide unsupported (X)</label>
+</div>
 
-  <table id="resultsTable"></table>
+<div class="table-wrap">
+  <table id="map"></table>
+</div>
 
-  <script>
-    const TICK = '\u2713';
-    const csv = `"Feature","SimMan 3G Plus","SimMan 3G","SimMan 3G Trauma","SimMan 3G Mystic","SimMan Essential","SimMan Essential Bleeding","SimMan ALS","Mama Anne","SimMom","Nursing Anne Simulator","SimBaby","SimJunior","SimNewB","SimNewB Classic"
-"Fluids","${TICK}","X","X","X","X","X","X","X","X","X","X","X","X",""
-"Circulation","X","X","X","X","${TICK}","X","${TICK}","X","${TICK}","${TICK}","X","X","X",""
-"Circulation & Bleeding","${TICK}","X","X","X","X","X","X","${TICK}","X","X","X","X","X",""
-"Circulation & Fluids","X","${TICK}","${TICK}","${TICK}","X","${TICK}","X","X","X","X","X","X","X",""
-"Circulation & Motions","X","X","X","X","X","X","X","X","X","X","${TICK}","${TICK}","${TICK}","${TICK}"
-"Convulsions","${TICK}","X","X","X","X","X","X","${TICK}","${TICK}","X","X","X","X",""
-"EFM","X","X","X","X","X","X","X","${TICK}","${TICK}","X","X","X","X",""
-"EFM Options","X","X","X","X","X","X","X","${TICK}","${TICK}","X","X","X","X",""
-"Delivery","X","X","X","X","X","X","X","${TICK}","${TICK}","X","X","X","X",""
-"CPR","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","X","X","${TICK}","X","X",""
-"CPR History","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","X","X","${TICK}","X","X",""
-"Airway & Breathing","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}"
-"Cardiac","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}"
-"Comments","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}"
-"Connections Status","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}"
-"Events","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}"
-"Eyes","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}"
-"Learner Patient Monitor Buttons","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}"
-"Local PC Status","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}"
-"Ongoing Care","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}"
-"Patient Monitor","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}"
-"Prediction","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}"
-"Session Control","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}"
-"Session Log","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}"
-"Simulator","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}"
-"Sounds","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}"
-"Status Bar","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}"
-"Theme Control","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}"
-"Trends","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}","${TICK}"`;
+<p class="legend"><span class="badge yes">✓ Supported</span> <span class="badge no">X Not supported</span> <span class="badge dev">⧗ In development</span></p>
+<script>
+const dataset = {"features": ["Fluids", "Circulation", "Circulation & Bleeding", "Circulation & Fluids", "Circulation & Motions", "Convulsions", "EFM", "EFM Options", "Delivery", "CPR", "CPR History", "Airway & Breathing", "Cardiac", "Comments", "Connections Status", "Events", "Eyes", "Learner Patient Monitor Buttons", "Local PC Status", "Ongoing Care", "Patient Monitor", "Prediction", "Session Control", "Session Log", "Simulator", "Sounds", "Status Bar", "Theme Control", "Trends", "LLEAP", "SimPad"], "manikins": ["SimMan 3G Plus", "SimMan 3G", "SimMan 3G Trauma", "SimMan 3G Mystic", "SimMan Essential", "SimMan Essential Bleeding", "SimMan ALS", "Mama Anne", "SimMom", "Nursing Anne Simulator", "SimBaby", "SimJunior", "SimNewB", "SimNewB Classic"], "rows": [{"Feature": "Fluids", "SimMan 3G Plus": "✓", "SimMan 3G": "X", "SimMan 3G Trauma": "X", "SimMan 3G Mystic": "X", "SimMan Essential": "X", "SimMan Essential Bleeding": "X", "SimMan ALS": "X", "Mama Anne": "X", "SimMom": "X", "Nursing Anne Simulator": "X", "SimBaby": "X", "SimJunior": "X", "SimNewB": "X", "SimNewB Classic": "In development"}, {"Feature": "Circulation", "SimMan 3G Plus": "X", "SimMan 3G": "X", "SimMan 3G Trauma": "X", "SimMan 3G Mystic": "X", "SimMan Essential": "✓", "SimMan Essential Bleeding": "X", "SimMan ALS": "✓", "Mama Anne": "X", "SimMom": "✓", "Nursing Anne Simulator": "✓", "SimBaby": "X", "SimJunior": "X", "SimNewB": "X", "SimNewB Classic": "In development"}, {"Feature": "Circulation & Bleeding", "SimMan 3G Plus": "✓", "SimMan 3G": "X", "SimMan 3G Trauma": "X", "SimMan 3G Mystic": "X", "SimMan Essential": "X", "SimMan Essential Bleeding": "X", "SimMan ALS": "X", "Mama Anne": "✓", "SimMom": "X", "Nursing Anne Simulator": "X", "SimBaby": "X", "SimJunior": "X", "SimNewB": "X", "SimNewB Classic": "In development"}, {"Feature": "Circulation & Fluids", "SimMan 3G Plus": "X", "SimMan 3G": "✓", "SimMan 3G Trauma": "✓", "SimMan 3G Mystic": "✓", "SimMan Essential": "X", "SimMan Essential Bleeding": "✓", "SimMan ALS": "X", "Mama Anne": "X", "SimMom": "X", "Nursing Anne Simulator": "X", "SimBaby": "X", "SimJunior": "X", "SimNewB": "X", "SimNewB Classic": "In development"}, {"Feature": "Circulation & Motions", "SimMan 3G Plus": "X", "SimMan 3G": "X", "SimMan 3G Trauma": "X", "SimMan 3G Mystic": "X", "SimMan Essential": "X", "SimMan Essential Bleeding": "X", "SimMan ALS": "X", "Mama Anne": "X", "SimMom": "X", "Nursing Anne Simulator": "X", "SimBaby": "✓", "SimJunior": "✓", "SimNewB": "✓", "SimNewB Classic": "✓"}, {"Feature": "Convulsions", "SimMan 3G Plus": "✓", "SimMan 3G": "X", "SimMan 3G Trauma": "X", "SimMan 3G Mystic": "X", "SimMan Essential": "X", "SimMan Essential Bleeding": "X", "SimMan ALS": "X", "Mama Anne": "✓", "SimMom": "✓", "Nursing Anne Simulator": "X", "SimBaby": "X", "SimJunior": "X", "SimNewB": "X", "SimNewB Classic": "In development"}, {"Feature": "EFM", "SimMan 3G Plus": "X", "SimMan 3G": "X", "SimMan 3G Trauma": "X", "SimMan 3G Mystic": "X", "SimMan Essential": "X", "SimMan Essential Bleeding": "X", "SimMan ALS": "X", "Mama Anne": "✓", "SimMom": "✓", "Nursing Anne Simulator": "X", "SimBaby": "X", "SimJunior": "X", "SimNewB": "X", "SimNewB Classic": "In development"}, {"Feature": "EFM Options", "SimMan 3G Plus": "X", "SimMan 3G": "X", "SimMan 3G Trauma": "X", "SimMan 3G Mystic": "X", "SimMan Essential": "X", "SimMan Essential Bleeding": "X", "SimMan ALS": "X", "Mama Anne": "✓", "SimMom": "✓", "Nursing Anne Simulator": "X", "SimBaby": "X", "SimJunior": "X", "SimNewB": "X", "SimNewB Classic": "In development"}, {"Feature": "Delivery", "SimMan 3G Plus": "X", "SimMan 3G": "X", "SimMan 3G Trauma": "X", "SimMan 3G Mystic": "X", "SimMan Essential": "X", "SimMan Essential Bleeding": "X", "SimMan ALS": "X", "Mama Anne": "✓", "SimMom": "✓", "Nursing Anne Simulator": "X", "SimBaby": "X", "SimJunior": "X", "SimNewB": "X", "SimNewB Classic": "In development"}, {"Feature": "CPR", "SimMan 3G Plus": "✓", "SimMan 3G": "✓", "SimMan 3G Trauma": "✓", "SimMan 3G Mystic": "✓", "SimMan Essential": "✓", "SimMan Essential Bleeding": "✓", "SimMan ALS": "✓", "Mama Anne": "✓", "SimMom": "X", "Nursing Anne Simulator": "X", "SimBaby": "✓", "SimJunior": "X", "SimNewB": "X", "SimNewB Classic": "In development"}, {"Feature": "CPR History", "SimMan 3G Plus": "✓", "SimMan 3G": "✓", "SimMan 3G Trauma": "✓", "SimMan 3G Mystic": "✓", "SimMan Essential": "✓", "SimMan Essential Bleeding": "✓", "SimMan ALS": "✓", "Mama Anne": "✓", "SimMom": "X", "Nursing Anne Simulator": "X", "SimBaby": "✓", "SimJunior": "X", "SimNewB": "X", "SimNewB Classic": "In development"}, {"Feature": "Airway & Breathing", "SimMan 3G Plus": "✓", "SimMan 3G": "✓", "SimMan 3G Trauma": "✓", "SimMan 3G Mystic": "✓", "SimMan Essential": "✓", "SimMan Essential Bleeding": "✓", "SimMan ALS": "✓", "Mama Anne": "✓", "SimMom": "✓", "Nursing Anne Simulator": "✓", "SimBaby": "✓", "SimJunior": "✓", "SimNewB": "✓", "SimNewB Classic": "✓"}, {"Feature": "Cardiac", "SimMan 3G Plus": "✓", "SimMan 3G": "✓", "SimMan 3G Trauma": "✓", "SimMan 3G Mystic": "✓", "SimMan Essential": "✓", "SimMan Essential Bleeding": "✓", "SimMan ALS": "✓", "Mama Anne": "✓", "SimMom": "✓", "Nursing Anne Simulator": "✓", "SimBaby": "✓", "SimJunior": "✓", "SimNewB": "✓", "SimNewB Classic": "✓"}, {"Feature": "Comments", "SimMan 3G Plus": "✓", "SimMan 3G": "✓", "SimMan 3G Trauma": "✓", "SimMan 3G Mystic": "✓", "SimMan Essential": "✓", "SimMan Essential Bleeding": "✓", "SimMan ALS": "✓", "Mama Anne": "✓", "SimMom": "✓", "Nursing Anne Simulator": "✓", "SimBaby": "✓", "SimJunior": "✓", "SimNewB": "✓", "SimNewB Classic": "✓"}, {"Feature": "Connections Status", "SimMan 3G Plus": "✓", "SimMan 3G": "✓", "SimMan 3G Trauma": "✓", "SimMan 3G Mystic": "✓", "SimMan Essential": "✓", "SimMan Essential Bleeding": "✓", "SimMan ALS": "✓", "Mama Anne": "✓", "SimMom": "✓", "Nursing Anne Simulator": "✓", "SimBaby": "✓", "SimJunior": "✓", "SimNewB": "✓", "SimNewB Classic": "✓"}, {"Feature": "Events", "SimMan 3G Plus": "✓", "SimMan 3G": "✓", "SimMan 3G Trauma": "✓", "SimMan 3G Mystic": "✓", "SimMan Essential": "✓", "SimMan Essential Bleeding": "✓", "SimMan ALS": "✓", "Mama Anne": "✓", "SimMom": "✓", "Nursing Anne Simulator": "✓", "SimBaby": "✓", "SimJunior": "✓", "SimNewB": "✓", "SimNewB Classic": "✓"}, {"Feature": "Eyes", "SimMan 3G Plus": "✓", "SimMan 3G": "✓", "SimMan 3G Trauma": "✓", "SimMan 3G Mystic": "✓", "SimMan Essential": "✓", "SimMan Essential Bleeding": "✓", "SimMan ALS": "✓", "Mama Anne": "✓", "SimMom": "✓", "Nursing Anne Simulator": "✓", "SimBaby": "✓", "SimJunior": "✓", "SimNewB": "✓", "SimNewB Classic": "✓"}, {"Feature": "Learner Patient Monitor Buttons", "SimMan 3G Plus": "✓", "SimMan 3G": "✓", "SimMan 3G Trauma": "✓", "SimMan 3G Mystic": "✓", "SimMan Essential": "✓", "SimMan Essential Bleeding": "✓", "SimMan ALS": "✓", "Mama Anne": "✓", "SimMom": "✓", "Nursing Anne Simulator": "✓", "SimBaby": "✓", "SimJunior": "✓", "SimNewB": "✓", "SimNewB Classic": "✓"}, {"Feature": "Local PC Status", "SimMan 3G Plus": "✓", "SimMan 3G": "✓", "SimMan 3G Trauma": "✓", "SimMan 3G Mystic": "✓", "SimMan Essential": "✓", "SimMan Essential Bleeding": "✓", "SimMan ALS": "✓", "Mama Anne": "✓", "SimMom": "✓", "Nursing Anne Simulator": "✓", "SimBaby": "✓", "SimJunior": "✓", "SimNewB": "✓", "SimNewB Classic": "✓"}, {"Feature": "Ongoing Care", "SimMan 3G Plus": "✓", "SimMan 3G": "✓", "SimMan 3G Trauma": "✓", "SimMan 3G Mystic": "✓", "SimMan Essential": "✓", "SimMan Essential Bleeding": "✓", "SimMan ALS": "✓", "Mama Anne": "✓", "SimMom": "✓", "Nursing Anne Simulator": "✓", "SimBaby": "✓", "SimJunior": "✓", "SimNewB": "✓", "SimNewB Classic": "✓"}, {"Feature": "Patient Monitor", "SimMan 3G Plus": "✓", "SimMan 3G": "✓", "SimMan 3G Trauma": "✓", "SimMan 3G Mystic": "✓", "SimMan Essential": "✓", "SimMan Essential Bleeding": "✓", "SimMan ALS": "✓", "Mama Anne": "✓", "SimMom": "✓", "Nursing Anne Simulator": "✓", "SimBaby": "✓", "SimJunior": "✓", "SimNewB": "✓", "SimNewB Classic": "✓"}, {"Feature": "Prediction", "SimMan 3G Plus": "✓", "SimMan 3G": "✓", "SimMan 3G Trauma": "✓", "SimMan 3G Mystic": "✓", "SimMan Essential": "✓", "SimMan Essential Bleeding": "✓", "SimMan ALS": "✓", "Mama Anne": "✓", "SimMom": "✓", "Nursing Anne Simulator": "✓", "SimBaby": "✓", "SimJunior": "✓", "SimNewB": "✓", "SimNewB Classic": "✓"}, {"Feature": "Session Control", "SimMan 3G Plus": "✓", "SimMan 3G": "✓", "SimMan 3G Trauma": "✓", "SimMan 3G Mystic": "✓", "SimMan Essential": "✓", "SimMan Essential Bleeding": "✓", "SimMan ALS": "✓", "Mama Anne": "✓", "SimMom": "✓", "Nursing Anne Simulator": "✓", "SimBaby": "✓", "SimJunior": "✓", "SimNewB": "✓", "SimNewB Classic": "✓"}, {"Feature": "Session Log", "SimMan 3G Plus": "✓", "SimMan 3G": "✓", "SimMan 3G Trauma": "✓", "SimMan 3G Mystic": "✓", "SimMan Essential": "✓", "SimMan Essential Bleeding": "✓", "SimMan ALS": "✓", "Mama Anne": "✓", "SimMom": "✓", "Nursing Anne Simulator": "✓", "SimBaby": "✓", "SimJunior": "✓", "SimNewB": "✓", "SimNewB Classic": "✓"}, {"Feature": "Simulator", "SimMan 3G Plus": "✓", "SimMan 3G": "✓", "SimMan 3G Trauma": "✓", "SimMan 3G Mystic": "✓", "SimMan Essential": "✓", "SimMan Essential Bleeding": "✓", "SimMan ALS": "✓", "Mama Anne": "✓", "SimMom": "✓", "Nursing Anne Simulator": "✓", "SimBaby": "✓", "SimJunior": "✓", "SimNewB": "✓", "SimNewB Classic": "✓"}, {"Feature": "Sounds", "SimMan 3G Plus": "✓", "SimMan 3G": "✓", "SimMan 3G Trauma": "✓", "SimMan 3G Mystic": "✓", "SimMan Essential": "✓", "SimMan Essential Bleeding": "✓", "SimMan ALS": "✓", "Mama Anne": "✓", "SimMom": "✓", "Nursing Anne Simulator": "✓", "SimBaby": "✓", "SimJunior": "✓", "SimNewB": "✓", "SimNewB Classic": "✓"}, {"Feature": "Status Bar", "SimMan 3G Plus": "✓", "SimMan 3G": "✓", "SimMan 3G Trauma": "✓", "SimMan 3G Mystic": "✓", "SimMan Essential": "✓", "SimMan Essential Bleeding": "✓", "SimMan ALS": "✓", "Mama Anne": "✓", "SimMom": "✓", "Nursing Anne Simulator": "✓", "SimBaby": "✓", "SimJunior": "✓", "SimNewB": "✓", "SimNewB Classic": "✓"}, {"Feature": "Theme Control", "SimMan 3G Plus": "✓", "SimMan 3G": "✓", "SimMan 3G Trauma": "✓", "SimMan 3G Mystic": "✓", "SimMan Essential": "✓", "SimMan Essential Bleeding": "✓", "SimMan ALS": "✓", "Mama Anne": "✓", "SimMom": "✓", "Nursing Anne Simulator": "✓", "SimBaby": "✓", "SimJunior": "✓", "SimNewB": "✓", "SimNewB Classic": "✓"}, {"Feature": "Trends", "SimMan 3G Plus": "✓", "SimMan 3G": "✓", "SimMan 3G Trauma": "✓", "SimMan 3G Mystic": "✓", "SimMan Essential": "✓", "SimMan Essential Bleeding": "✓", "SimMan ALS": "✓", "Mama Anne": "✓", "SimMom": "✓", "Nursing Anne Simulator": "✓", "SimBaby": "✓", "SimJunior": "✓", "SimNewB": "✓", "SimNewB Classic": "✓"}, {"Feature": "LLEAP", "SimMan 3G Plus": "✓", "SimMan 3G": "✓", "SimMan 3G Trauma": "✓", "SimMan 3G Mystic": "✓", "SimMan Essential": "✓", "SimMan Essential Bleeding": "✓", "SimMan ALS": "✓", "Mama Anne": "✓", "SimMom": "✓", "Nursing Anne Simulator": "✓", "SimBaby": "✓", "SimJunior": "✓", "SimNewB": "✓", "SimNewB Classic": "✓"}, {"Feature": "SimPad", "SimMan 3G Plus": "X", "SimMan 3G": "X", "SimMan 3G Trauma": "X", "SimMan 3G Mystic": "X", "SimMan Essential": "X", "SimMan Essential Bleeding": "X", "SimMan ALS": "✓", "Mama Anne": "X", "SimMom": "✓", "Nursing Anne Simulator": "✓", "SimBaby": "✓", "SimJunior": "X", "SimNewB": "✓", "SimNewB Classic": "✓"}]};
+let currentView = 'complete';
+let selectedFeature = dataset.features[0] || '';
+let selectedManikin = dataset.manikins[0] || '';
+let hideUnsupported = false;
 
-    function parseCSV(text) {
-      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-      return lines.map(line => {
-        const cells = []; let i = 0, inQuotes = false, cell = '';
-        while (i < line.length) {
-          const ch = line[i];
-          if (ch === '"') { if (inQuotes && line[i+1] === '"') { cell += '"'; i += 2; } else { inQuotes = !inQuotes; i++; } }
-          else if (ch === ',' && !inQuotes) { cells.push(cell); cell = ''; i++; }
-          else { cell += ch; i++; }
-        }
-        cells.push(cell);
-        return cells.map(c => c.trim());
+const opsFeatures = new Set(dataset.features.filter(f => ['lleap','simpad'].includes(String(f).trim().toLowerCase())));
+
+function normalizeSymbol(val){
+  if(!val) return '';
+  const v = String(val).trim().toLowerCase();
+  if(v === 'in development') return '\u29d7'; // ⧗
+  return String(val).trim();
+}
+
+function statusClass(val){
+  if(!val) return '';
+  const v = String(val).trim().toLowerCase();
+  if(v === '✓' || v === '\u2713') return 'yes';
+  if(v === 'x') return 'no';
+  if(v === 'in development' || v === '\u29d7') return 'dev';
+  return '';
+}
+
+function renderTable(){
+  const table = document.getElementById('map');
+  const thead = document.createElement('thead');
+  const tbody = document.createElement('tbody');
+  table.innerHTML = '';
+
+  if(currentView === 'complete'){
+    // Header: Feature + all manikins
+    const hr = document.createElement('tr');
+    ['Feature', ...dataset.manikins].forEach(h=>{ const th=document.createElement('th'); th.textContent=h; hr.appendChild(th); });
+    thead.appendChild(hr);
+    // Body: full matrix (add ops row divider before LLEAP/SimPad)
+    dataset.rows.forEach(row=>{
+      const tr = document.createElement('tr');
+      if(opsFeatures.has(row['Feature'])) tr.classList.add('ops-row');
+      const ftd = document.createElement('td'); ftd.textContent = row['Feature']; tr.appendChild(ftd);
+      dataset.manikins.forEach(m=>{
+        const raw = row[m] || '';
+        const td = document.createElement('td');
+        td.textContent = normalizeSymbol(raw);
+        td.className = statusClass(raw);
+        tr.appendChild(td);
       });
-    }
-
-    function buildModel(rows) {
-      const header = rows[0], manikins = header.slice(1);
-      const dataByFeature = {}, dataByManikin = {};
-      manikins.forEach(m => dataByManikin[m] = {});
-      for (let r = 1; r < rows.length; r++) {
-        const feature = rows[r][0]; if (!feature) continue;
-        dataByFeature[feature] = {};
-        for (let c = 1; c < header.length; c++) {
-          const m = header[c], raw = rows[r][c] || '';
-          const v = (raw.startsWith('\u2713') || raw.startsWith('✓')) ? '✓' : 'X';
-          dataByFeature[feature][m] = v;
-          dataByManikin[m][feature] = v;
-        }
-      }
-      return { features: Object.keys(dataByFeature), manikins, dataByFeature, dataByManikin };
-    }
-
-    function renderComplete(el, model) {
-      let html = '<tr><th>Feature \\ Manikin</th>';
-      model.manikins.forEach(m => html += `<th>${m}</th>`); html += '</tr>';
-      model.features.forEach(f => {
-        html += `<tr><th>${f}</th>`;
-        model.manikins.forEach(m => {
-          const v = model.dataByFeature[f][m];
-          html += `<td class="${v==='✓'?'yes':'no'}">${v}</td>`;
-        });
-        html += `</tr>`;
-      });
-      el.innerHTML = html;
-    }
-
-    function renderFeature(el, f, model, hideX = false) {
-      el.innerHTML = `<tr><th>Manikin</th><th>${f}</th></tr>`;
-      const row = model.dataByFeature[f];
-      Object.keys(row).forEach(m => {
-        const v = row[m];
-        if (hideX && v !== '✓') return;
-        el.innerHTML += `<tr><td>${m}</td><td class="${v==='✓'?'yes':'no'}">${v}</td></tr>`;
-      });
-    }
-
-    function renderManikin(el, m, model) {
-      el.innerHTML = `<tr><th>Feature</th><th>${m}</th></tr>`;
-      const row = model.dataByManikin[m];
-      Object.keys(row).forEach(f => {
-        const v = row[f];
-        el.innerHTML += `<tr><td>${f}</td><td class="${v==='✓'?'yes':'no'}">${v}</td></tr>`;
-      });
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      const rows = parseCSV(csv);
-      const model = buildModel(rows);
-      if (!model) return;
-
-      const featureSelect = document.getElementById('featureSelect');
-      const manikinSelect = document.getElementById('manikinSelect');
-      const featureWrap = document.getElementById('featureSelectWrap');
-      const manikinWrap = document.getElementById('manikinSelectWrap');
-      const hideXWrap = document.getElementById('hideXWrap');
-      const hideX = document.getElementById('hideX');
-      const table = document.getElementById('resultsTable');
-      const btnComplete = document.getElementById('btnComplete');
-      const btnFeature = document.getElementById('btnFeature');
-      const btnManikin = document.getElementById('btnManikin');
-
-      model.features.forEach(f => featureSelect.appendChild(new Option(f, f)));
-      model.manikins.forEach(m => manikinSelect.appendChild(new Option(m, m)));
-
-      let view = 'complete';
-      function setActive(btn) {
-        [btnComplete, btnFeature, btnManikin].forEach(b => b.classList.toggle('active', b === btn));
-      }
-      function render() {
-        featureWrap.style.display = (view === 'feature') ? 'flex' : 'none';
-        manikinWrap.style.display = (view === 'manikin') ? 'flex' : 'none';
-        hideXWrap.style.display = (view === 'feature') ? 'flex' : 'none';
-
-        if (view === 'complete') {
-          renderComplete(table, model);
-          setActive(btnComplete);
-        } else if (view === 'feature') {
-          renderFeature(table, featureSelect.value, model, hideX.checked);
-          setActive(btnFeature);
-        } else {
-          renderManikin(table, manikinSelect.value, model);
-          setActive(btnManikin);
-        }
-      }
-
-      render();
-      featureSelect.addEventListener('change', render);
-      manikinSelect.addEventListener('change', render);
-      hideX.addEventListener('change', render);
-      btnComplete.addEventListener('click', () => { view = 'complete'; render(); });
-      btnFeature.addEventListener('click', () => { view = 'feature'; render(); });
-      btnManikin.addEventListener('click', () => { view = 'manikin'; render(); });
+      tbody.appendChild(tr);
     });
-  </script>
+  }
+  else if(currentView === 'feature'){
+    // Build list of manikins to show (filter X if hide)
+    let manikins = dataset.manikins.slice();
+    if(selectedFeature && hideUnsupported){
+      const row = dataset.rows.find(r=>r['Feature']===selectedFeature) || {};
+      manikins = manikins.filter(m => String(row[m]||'').trim().toUpperCase() !== 'X');
+    }
+    // Header: manikins only
+    const hr = document.createElement('tr');
+    manikins.forEach(m=>{ const th=document.createElement('th'); th.textContent=m; hr.appendChild(th); });
+    thead.appendChild(hr);
 
-  <div class="footer">
-    
-  </div>
+    // Body: one row of statuses for selected feature
+    const tr = document.createElement('tr');
+    if(selectedFeature){
+      const baseRow = dataset.rows.find(r=>r['Feature']===selectedFeature);
+      manikins.forEach(m=>{
+        const raw = baseRow ? (baseRow[m]||'') : '';
+        const td = document.createElement('td');
+        td.textContent = normalizeSymbol(raw);
+        td.className = statusClass(raw);
+        tr.appendChild(td);
+      });
+    } else {
+      const td = document.createElement('td'); td.colSpan = manikins.length || 1; td.textContent = 'Pick a feature'; tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+  else if(currentView === 'manikin'){
+    // Build list of features to show (filter X if hide)
+    let feats = dataset.features.slice();
+    if(selectedManikin && hideUnsupported){
+      feats = feats.filter(f => {
+        const row = dataset.rows.find(r=>r['Feature']===f) || {};
+        return String(row[selectedManikin]||'').trim().toUpperCase() !== 'X';
+      });
+    }
+    // Header: features + gap column between 'Trends' and LLEAP (if both present)
+    const hr = document.createElement('tr');
+    const hasTrends = feats.includes('Trends');
+    feats.forEach(f=>{ 
+      const th=document.createElement('th'); th.textContent=f; 
+      if(['LLEAP','SimPad'].includes(f)) th.classList.add('ops-col');
+      hr.appendChild(th); 
+      if(hasTrends && f==='Trends' && (feats.includes('LLEAP') || feats.includes('SimPad'))){
+        const gap = document.createElement('th'); gap.className='gap-col'; hr.appendChild(gap);
+      }
+    });
+    thead.appendChild(hr);
+
+    // Body: one row of statuses for selected manikin with gap cell at same position
+    const tr = document.createElement('tr');
+    if(selectedManikin){
+      feats.forEach(f=>{
+        const row = dataset.rows.find(r=>r['Feature']===f);
+        const raw = row ? (row[selectedManikin]||'') : '';
+        const td = document.createElement('td');
+        if(['LLEAP','SimPad'].includes(f)) td.classList.add('ops-col');
+        td.textContent = normalizeSymbol(raw);
+        td.className = [td.className, statusClass(raw)].join(' ').trim();
+        tr.appendChild(td);
+        if(hasTrends && f==='Trends' && (feats.includes('LLEAP') || feats.includes('SimPad'))){
+          const gapc = document.createElement('td'); gapc.className='gap-cell'; tr.appendChild(gapc);
+        }
+      });
+    } else {
+      const td = document.createElement('td'); td.colSpan = feats.length || 1; td.textContent = 'Pick a manikin'; tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+
+  table.appendChild(thead);
+  table.appendChild(tbody);
+}
+
+function updateControlsVisibility(){
+  const featureWrap = document.getElementById('feature-wrap');
+  const manikinWrap = document.getElementById('manikin-wrap');
+  const hideXWrap = document.getElementById('hidex-wrap');
+  featureWrap.classList.toggle('hidden', currentView!=='feature');
+  manikinWrap.classList.toggle('hidden', currentView!=='manikin');
+  hideXWrap.classList.toggle('hidden', !(currentView==='feature' || currentView==='manikin'));
+}
+
+function setView(mode){
+  currentView = mode;
+  document.querySelectorAll('button.view').forEach(b=>b.classList.toggle('active', b.dataset.mode===currentView));
+  updateControlsVisibility();
+  renderTable();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Populate selects
+  const featureSelect = document.getElementById('feature-select');
+  const manikinSelect = document.getElementById('manikin-select');
+  featureSelect.innerHTML = '<option value="">Select feature...</option><optgroup label="Features"><option value="Fluids">Fluids</option><option value="Circulation">Circulation</option><option value="Circulation &amp; Bleeding">Circulation &amp; Bleeding</option><option value="Circulation &amp; Fluids">Circulation &amp; Fluids</option><option value="Circulation &amp; Motions">Circulation &amp; Motions</option><option value="Convulsions">Convulsions</option><option value="EFM">EFM</option><option value="EFM Options">EFM Options</option><option value="Delivery">Delivery</option><option value="CPR">CPR</option><option value="CPR History">CPR History</option><option value="Airway &amp; Breathing">Airway &amp; Breathing</option><option value="Cardiac">Cardiac</option><option value="Comments">Comments</option><option value="Connections Status">Connections Status</option><option value="Events">Events</option><option value="Eyes">Eyes</option><option value="Learner Patient Monitor Buttons">Learner Patient Monitor Buttons</option><option value="Local PC Status">Local PC Status</option><option value="Ongoing Care">Ongoing Care</option><option value="Patient Monitor">Patient Monitor</option><option value="Prediction">Prediction</option><option value="Session Control">Session Control</option><option value="Session Log">Session Log</option><option value="Simulator">Simulator</option><option value="Sounds">Sounds</option><option value="Status Bar">Status Bar</option><option value="Theme Control">Theme Control</option><option value="Trends">Trends</option></optgroup><optgroup label="Operation form"><option value="LLEAP">LLEAP</option><option value="SimPad">SimPad</option></optgroup>';
+  manikinSelect.innerHTML = '<option value="SimMan 3G Plus">SimMan 3G Plus</option><option value="SimMan 3G">SimMan 3G</option><option value="SimMan 3G Trauma">SimMan 3G Trauma</option><option value="SimMan 3G Mystic">SimMan 3G Mystic</option><option value="SimMan Essential">SimMan Essential</option><option value="SimMan Essential Bleeding">SimMan Essential Bleeding</option><option value="SimMan ALS">SimMan ALS</option><option value="Mama Anne">Mama Anne</option><option value="SimMom">SimMom</option><option value="Nursing Anne Simulator">Nursing Anne Simulator</option><option value="SimBaby">SimBaby</option><option value="SimJunior">SimJunior</option><option value="SimNewB">SimNewB</option><option value="SimNewB Classic">SimNewB Classic</option>';
+
+  // Wire selects
+  featureSelect.addEventListener('change', e=>{ selectedFeature = e.target.value; renderTable(); });
+  manikinSelect.addEventListener('change', e=>{ selectedManikin = e.target.value; renderTable(); });
+  document.getElementById('hide-x').addEventListener('change', e=>{ hideUnsupported = e.target.checked; renderTable(); });
+
+  // Wire view buttons
+  document.getElementById('btn-complete').addEventListener('click', ()=>setView('complete'));
+  document.getElementById('btn-feature').addEventListener('click', ()=>setView('feature'));
+  document.getElementById('btn-manikin').addEventListener('click', ()=>setView('manikin'));
+
+  // Init defaults
+  selectedFeature = dataset.features[0] || '';
+  selectedManikin = dataset.manikins[0] || '';
+  updateControlsVisibility();
+  renderTable();
+});
+</script>
 </body>
 </html>
