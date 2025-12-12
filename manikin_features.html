@@ -12,7 +12,9 @@ h1{margin-bottom:0.25rem}
 .subnav{display:flex; gap:0.5rem}
 button.view{padding:0.35rem 0.75rem; border:1px solid #ccc; border-radius:6px; background:#fff; cursor:pointer}
 button.view.active{background:#eef4ff; border-color:#91b2ff}
-.table-wrap{overflow:auto; border:1px solid #ddd; border-radius:8px; padding:0.5rem; background:#fff}
+/* Make the table border wrap content, not page */
+.table-wrap{overflow:auto; padding:0.25rem; background:transparent; border:none}
+.table-frame{display:inline-block; border:1px solid #ddd; border-radius:8px; padding:0.25rem; background:#fff}
 /* Fit table to content width */
 table{border-collapse:separate; border-spacing:0; width:max-content; display:inline-table}
 th, td{border:1px solid #eee; padding:0.6rem 0.9rem; text-align:center; vertical-align:middle; white-space:nowrap}
@@ -22,12 +24,10 @@ tr:hover{background:#f9fbff}
 .yes{background:#eaf7ea; color:#126012; font-weight:700}
 .no{background:#fdeaea; color:#7d0d0d; font-weight:700}
 .dev{background:#fff6e5; color:#7a4d00; font-weight:700}
-/* More noticeable division for LLEAP/SimPad */
-.ops-row{border-top:4px solid #bdbdbd}
-.ops-col{border-left:4px solid #bdbdbd}
-/* Extra gap between Trends and LLEAP in manikin view */
-.gap-col{min-width:12px; border:none !important; background:transparent}
-.gap-cell{min-width:12px; border:none !important; background:transparent}
+/* Noticeable spacing (gap) without borders */
+.gap-col, .gap-cell{min-width:16px; border:none !important; background:transparent}
+/* Subtle division for LLEAP/SimPad rows in complete view using spacer row */
+.spacer-row td{border:none !important; background:transparent; height:14px; padding:0 !important}
 .legend{margin-top:0.5rem; color:#666; font-size:0.9rem}
 .badge{display:inline-block; padding:0.15rem 0.5rem; border-radius:999px; font-size:0.8rem}
 .badge.yes{background:#d7f1d7; color:#0d4e0d}
@@ -55,7 +55,9 @@ tr:hover{background:#f9fbff}
 </div>
 
 <div class="table-wrap">
-  <table id="map"></table>
+  <div class="table-frame">
+    <table id="map"></table>
+  </div>
 </div>
 
 <p class="legend"><span class="badge yes">✓ Supported</span> <span class="badge no">X Not supported</span> <span class="badge dev">⧗ In development</span></p>
@@ -95,10 +97,18 @@ function renderTable(){
     const hr = document.createElement('tr');
     ['Feature', ...dataset.manikins].forEach(h=>{ const th=document.createElement('th'); th.textContent=h; hr.appendChild(th); });
     thead.appendChild(hr);
-    // Body: full matrix (add ops row divider before LLEAP/SimPad)
+
+    // Body: full matrix
+    let addedSpacer = false;
     dataset.rows.forEach(row=>{
+      // Insert a spacer row right before the first ops feature (LLEAP/SimPad)
+      if(!addedSpacer && opsFeatures.has(row['Feature'])){
+        const spacer = document.createElement('tr'); spacer.className = 'spacer-row';
+        const td = document.createElement('td'); td.colSpan = 1 + dataset.manikins.length; spacer.appendChild(td);
+        tbody.appendChild(spacer);
+        addedSpacer = true;
+      }
       const tr = document.createElement('tr');
-      if(opsFeatures.has(row['Feature'])) tr.classList.add('ops-row');
       const ftd = document.createElement('td'); ftd.textContent = row['Feature']; tr.appendChild(ftd);
       dataset.manikins.forEach(m=>{
         const raw = row[m] || '';
@@ -147,14 +157,13 @@ function renderTable(){
         return String(row[selectedManikin]||'').trim().toUpperCase() !== 'X';
       });
     }
-    // Header: features + gap column between 'Trends' and LLEAP (if both present)
+    // Header: features + gap column between 'Trends' and first ops feature
     const hr = document.createElement('tr');
     const hasTrends = feats.includes('Trends');
+    const hasOps = feats.some(f => opsFeatures.has(f));
     feats.forEach(f=>{ 
-      const th=document.createElement('th'); th.textContent=f; 
-      if(['LLEAP','SimPad'].includes(f)) th.classList.add('ops-col');
-      hr.appendChild(th); 
-      if(hasTrends && f==='Trends' && (feats.includes('LLEAP') || feats.includes('SimPad'))){
+      const th=document.createElement('th'); th.textContent=f; hr.appendChild(th); 
+      if(hasTrends && f==='Trends' && hasOps){
         const gap = document.createElement('th'); gap.className='gap-col'; hr.appendChild(gap);
       }
     });
@@ -167,11 +176,10 @@ function renderTable(){
         const row = dataset.rows.find(r=>r['Feature']===f);
         const raw = row ? (row[selectedManikin]||'') : '';
         const td = document.createElement('td');
-        if(['LLEAP','SimPad'].includes(f)) td.classList.add('ops-col');
         td.textContent = normalizeSymbol(raw);
-        td.className = [td.className, statusClass(raw)].join(' ').trim();
+        td.className = statusClass(raw);
         tr.appendChild(td);
-        if(hasTrends && f==='Trends' && (feats.includes('LLEAP') || feats.includes('SimPad'))){
+        if(hasTrends && f==='Trends' && hasOps){
           const gapc = document.createElement('td'); gapc.className='gap-cell'; tr.appendChild(gapc);
         }
       });
